@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MatchCardView: View {
     let match: Match
+    let onPoke: () -> Void
+    let onChat: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
@@ -30,6 +32,60 @@ struct MatchCardView: View {
                 .foregroundColor(.secondary)
             }
 
+            // Poke counts
+            HStack(spacing: 24) {
+                VStack {
+                    Text("\(match.myPokes)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Text("You poked")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                VStack {
+                    Text("\(match.partnerPokes)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Text("They poked")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+
+            // Action buttons
+            HStack(spacing: 12) {
+                // Chat button
+                Button(action: onChat) {
+                    HStack {
+                        Image(systemName: "message.fill")
+                        Text("Chat")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+
+                // Poke button
+                Button(action: onPoke) {
+                    HStack {
+                        Image(systemName: "hand.point.right.fill")
+                        Text("Poke!")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.orange)
+                    .cornerRadius(12)
+                }
+            }
+            .padding(.horizontal)
+
             // Status badge
             HStack {
                 Circle()
@@ -53,13 +109,19 @@ struct MatchCardView: View {
 }
 
 #Preview {
-    MatchCardView(match: Match(
-        id: "1",
-        date: "2026-02-01",
-        partnerId: "123",
-        partnerName: "Jane Doe",
-        partnerMajor: "Computer Science",
-        status: "active",
-        createdAt: "2026-02-01T12:00:00Z"
-    ))
+    MatchCardView(
+        match: Match(
+            id: "1",
+            date: "2026-02-01",
+            partnerId: "123",
+            partnerName: "Jane Doe",
+            partnerMajor: "Computer Science",
+            status: "active",
+            myPokes: 3,
+            partnerPokes: 5,
+            createdAt: "2026-02-01T12:00:00Z"
+        ),
+        onPoke: {},
+        onChat: {}
+    )
 }

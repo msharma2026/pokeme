@@ -84,4 +84,49 @@ class NetworkService {
             throw NetworkError.decodingError(decodingError)
         }
     }
+
+    func request<T: Codable, B: Encodable>(
+        endpoint: String,
+        method: HTTPMethod = .GET,
+        body: B,
+        token: String? = nil
+    ) async throws -> T {
+        guard let url = URL(string: Constants.baseURL + endpoint) else {
+            throw NetworkError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.unknown(NSError(domain: "Invalid response", code: 0))
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw NetworkError.unauthorized
+        }
+
+        do {
+            let apiResponse = try JSONDecoder().decode(APIResponse<T>.self, from: data)
+
+            if apiResponse.success, let responseData = apiResponse.data {
+                return responseData
+            } else if let error = apiResponse.error {
+                throw NetworkError.serverError(error.message)
+            } else {
+                throw NetworkError.noData
+            }
+        } catch let decodingError as DecodingError {
+            throw NetworkError.decodingError(decodingError)
+        }
+    }
 }

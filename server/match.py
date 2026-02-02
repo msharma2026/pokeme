@@ -324,3 +324,132 @@ def poke():
             'message': 'Poked!'
         }
     })
+
+
+@match_bp.route('/messages', methods=['GET'])
+@require_auth
+def get_messages():
+    """Get messages for the current match."""
+    user_id = request.user_id
+    today = get_today_date_string()
+
+    # Find existing match
+    existing_match = get_existing_match(user_id, today)
+
+    if not existing_match:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'NO_MATCH',
+                'message': 'No active match found for today'
+            }
+        }), 400
+
+    match_id = existing_match.key.name or str(existing_match.key.id)
+
+    # Get messages for this match
+    client = get_client()
+    query = client.query(kind='Message')
+    query.add_filter('matchId', '=', match_id)
+    # Note: Sorting in Python to avoid needing a composite index
+
+    messages = []
+    for msg in query.fetch():
+        messages.append({
+            'id': msg.key.name or str(msg.key.id),
+            'matchId': msg.get('matchId'),
+            'senderId': msg.get('senderId'),
+            'text': msg.get('text'),
+            'createdAt': msg.get('createdAt')
+        })
+
+    # Sort messages by createdAt
+    messages.sort(key=lambda m: m['createdAt'])
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'messages': messages,
+            'matchId': match_id
+        }
+    })
+
+
+@match_bp.route('/messages', methods=['POST'])
+@require_auth
+def send_message():
+    """Send a message to your match."""
+    user_id = request.user_id
+    today = get_today_date_string()
+
+    # Find existing match
+    existing_match = get_existing_match(user_id, today)
+
+    if not existing_match:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'NO_MATCH',
+                'message': 'No active match found for today'
+            }
+        }), 400
+
+    if existing_match.get('status') != 'active':
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'MATCH_INACTIVE',
+                'message': 'Cannot send messages to a disconnected match'
+            }
+        }), 400
+
+    data = request.get_json()
+    text = data.get('text', '').strip()
+
+    if not text:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'VALIDATION_ERROR',
+                'message': 'Message text is required'
+            }
+        }), 400
+
+    if len(text) > 1000:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'VALIDATION_ERROR',
+                'message': 'Message too long (max 1000 characters)'
+            }
+        }), 400
+
+    match_id = existing_match.key.name or str(existing_match.key.id)
+
+    # Create message
+    client = get_client()
+    message_id = str(uuid.uuid4())
+    key = client.key('Message', message_id)
+
+    entity = Entity(key)
+    entity.update({
+        'matchId': match_id,
+        'senderId': user_id,
+        'text': text,
+        'createdAt': datetime.utcnow().isoformat() + 'Z'
+    })
+
+    client.put(entity)
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'message': {
+                'id': message_id,
+                'matchId': match_id,
+                'senderId': user_id,
+                'text': text,
+                'createdAt': entity.get('createdAt')
+            }
+        }
+    })

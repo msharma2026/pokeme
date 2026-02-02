@@ -10,8 +10,12 @@ def user_to_dict(entity, include_password=False):
     result = {
         'id': entity.key.name or str(entity.key.id),
         'email': entity.get('email'),
+        'phone': entity.get('phone'),
         'displayName': entity.get('displayName'),
         'major': entity.get('major'),
+        'bio': entity.get('bio'),
+        'profilePicture': entity.get('profilePicture'),
+        'socials': entity.get('socials', {}),
         'socialPoints': entity.get('socialPoints', Config.INITIAL_SOCIAL_POINTS),
         'createdAt': entity.get('createdAt'),
     }

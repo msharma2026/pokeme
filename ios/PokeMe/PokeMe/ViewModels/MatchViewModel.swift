@@ -29,6 +29,8 @@ class MatchViewModel: ObservableObject {
     @Published var matchState: MatchState = .loading
     @Published var isLoading = false
 
+    private var pollTimer: Timer?
+
     func fetchTodayMatch(token: String?) async {
         guard let token = token else {
             matchState = .error("Not authenticated")
@@ -81,5 +83,59 @@ class MatchViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    func poke(token: String?) async {
+        guard let token = token else {
+            matchState = .error("Not authenticated")
+            return
+        }
+
+        do {
+            let response = try await MatchService.shared.poke(token: token)
+            matchState = .matched(response.match)
+        } catch let error as NetworkError {
+            matchState = .error(error.errorDescription ?? "Unknown error")
+        } catch {
+            matchState = .error(error.localizedDescription)
+        }
+    }
+
+    func startPolling(token: String?) {
+        stopPolling()
+        let timer = Timer(timeInterval: 5.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.refreshMatch(token: token)
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        pollTimer = timer
+    }
+
+    func stopPolling() {
+        pollTimer?.invalidate()
+        pollTimer = nil
+    }
+
+    private func refreshMatch(token: String?) async {
+        guard let token = token else { return }
+
+        do {
+            let response = try await MatchService.shared.getTodayMatch(token: token)
+
+            switch response.status {
+            case "matched":
+                if let match = response.match {
+                    matchState = .matched(match)
+                }
+            case "disconnected":
+                matchState = .disconnected(nextMatchAt: response.nextMatchAt ?? "tomorrow")
+                stopPolling()
+            default:
+                break
+            }
+        } catch {
+            // Silently fail on refresh - don't update error state
+        }
     }
 }

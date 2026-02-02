@@ -9,9 +9,12 @@ enum Constants {
         static let register = "/auth/register"
         static let login = "/auth/login"
         static let me = "/auth/me"
+        static let profile = "/auth/profile"
+        static let profilePicture = "/auth/profile-picture"
         static let todayMatch = "/match/today"
         static let disconnect = "/match/disconnect"
         static let poke = "/match/poke"
+        static let messages = "/match/messages"
     }
 
     enum StorageKeys {

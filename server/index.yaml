@@ -1,0 +1,15 @@
+indexes:
+- kind: Message
+  properties:
+  - name: matchId
+  - name: createdAt
+
+- kind: Match
+  properties:
+  - name: date
+  - name: user1Id
+
+- kind: Match
+  properties:
+  - name: date
+  - name: user2Id

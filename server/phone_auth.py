@@ -20,6 +20,8 @@ TEST_PHONES = {
     '+15305550004': {'scenario': 'invalid_code'},
     '+15305550005': {'scenario': 'max_attempts'},
     '+15305550006': {'scenario': 'service_unavailable'},
+    '+15305550007': {'scenario': 'happy_path', 'code': '222222'},  # Fourth working test user
+    '+15305550008': {'scenario': 'happy_path', 'code': '333333'},  # Fifth working test user
 }
 
 

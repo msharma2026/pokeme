@@ -182,3 +182,82 @@ def get_me():
         'success': True,
         'data': user_to_dict(user)
     })
+
+
+@auth_bp.route('/profile', methods=['PUT'])
+@require_auth
+def update_profile():
+    """Update user profile."""
+    user = get_user_by_id(request.user_id)
+
+    if not user:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'USER_NOT_FOUND',
+                'message': 'User not found'
+            }
+        }), 404
+
+    data = request.get_json()
+
+    # Update allowed fields
+    if 'displayName' in data:
+        user['displayName'] = data['displayName']
+    if 'major' in data:
+        user['major'] = data['major']
+    if 'bio' in data:
+        user['bio'] = data['bio']
+    if 'socials' in data:
+        user['socials'] = data['socials']
+
+    user['updatedAt'] = datetime.utcnow().isoformat() + 'Z'
+
+    client = get_client()
+    client.put(user)
+
+    return jsonify({
+        'success': True,
+        'data': user_to_dict(user)
+    })
+
+
+@auth_bp.route('/profile-picture', methods=['POST'])
+@require_auth
+def upload_profile_picture():
+    """Upload a profile picture (base64 encoded)."""
+    user = get_user_by_id(request.user_id)
+
+    if not user:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'USER_NOT_FOUND',
+                'message': 'User not found'
+            }
+        }), 404
+
+    data = request.get_json()
+    image_data = data.get('image')
+
+    if not image_data:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'VALIDATION_ERROR',
+                'message': 'Image data is required'
+            }
+        }), 400
+
+    # Store as base64 data URL (for simplicity)
+    # In production, you'd upload to Cloud Storage and store the URL
+    user['profilePicture'] = image_data
+    user['updatedAt'] = datetime.utcnow().isoformat() + 'Z'
+
+    client = get_client()
+    client.put(user)
+
+    return jsonify({
+        'success': True,
+        'data': user_to_dict(user)
+    })

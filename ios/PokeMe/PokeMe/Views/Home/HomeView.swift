@@ -3,6 +3,9 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var matchViewModel = MatchViewModel()
+    @State private var showProfile = false
+    @State private var showChat = false
+    @State private var currentPartnerName = ""
 
     var body: some View {
         NavigationView {
@@ -23,7 +26,14 @@ struct HomeView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(.secondary)
 
-                        MatchCardView(match: match)
+                        MatchCardView(match: match, onPoke: {
+                            Task {
+                                await matchViewModel.poke(token: authViewModel.getToken())
+                            }
+                        }, onChat: {
+                            currentPartnerName = match.partnerName
+                            showChat = true
+                        })
 
                         Button(action: {
                             Task {
@@ -125,6 +135,11 @@ struct HomeView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button(action: {
+                            showProfile = true
+                        }) {
+                            Label("Profile", systemImage: "person.crop.circle")
+                        }
+                        Button(action: {
                             authViewModel.logout()
                         }) {
                             Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
@@ -135,8 +150,22 @@ struct HomeView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showProfile) {
+                ProfileView()
+                    .environmentObject(authViewModel)
+            }
+            .sheet(isPresented: $showChat) {
+                ChatView(partnerName: currentPartnerName)
+                    .environmentObject(authViewModel)
+            }
             .task {
                 await matchViewModel.fetchTodayMatch(token: authViewModel.getToken())
+            }
+            .onAppear {
+                matchViewModel.startPolling(token: authViewModel.getToken())
+            }
+            .onDisappear {
+                matchViewModel.stopPolling()
             }
         }
     }
