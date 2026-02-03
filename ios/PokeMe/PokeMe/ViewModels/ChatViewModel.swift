@@ -7,9 +7,18 @@ class ChatViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isSending = false
     @Published var errorMessage: String?
+    @Published var partnerIsTyping = false
+
+    static let allowedReactions = ["👍", "❤️", "😂", "😮", "😢"]
 
     private var currentUserId: String?
     private var pollTimer: Timer?
+
+    // Typing indicator debounce
+    private var lastTypingSentAt: Date?
+    private var typingStopTimer: Timer?
+    private let typingDebounceInterval: TimeInterval = 2.0
+    private let typingAutoStopInterval: TimeInterval = 5.0  // Stop typing after 5s of no input
 
     func setCurrentUser(id: String) {
         self.currentUserId = id
@@ -31,7 +40,11 @@ class ChatViewModel: ObservableObject {
                 updatedMessages[i].isFromCurrentUser = updatedMessages[i].senderId == currentUserId
             }
             messages = updatedMessages
+            partnerIsTyping = response.partnerIsTyping ?? false
             errorMessage = nil
+
+            // Mark unread messages as read
+            await markUnreadMessagesAsRead(token: token)
         } catch let error as NetworkError {
             errorMessage = error.errorDescription
         } catch {
@@ -58,6 +71,9 @@ class ChatViewModel: ObservableObject {
             newMessage.isFromCurrentUser = true
             messages.append(newMessage)
             isSending = false
+
+            // Stop typing indicator after sending
+            await stopTyping(token: token)
             return true
         } catch let error as NetworkError {
             errorMessage = error.errorDescription
@@ -84,5 +100,149 @@ class ChatViewModel: ObservableObject {
     func stopPolling() {
         pollTimer?.invalidate()
         pollTimer = nil
+    }
+
+    // MARK: - Reactions
+
+    func addReaction(token: String?, messageId: String, emoji: String) async {
+        guard let token = token, let currentUserId = currentUserId else { return }
+
+        // Optimistically update UI
+        if let index = messages.firstIndex(where: { $0.id == messageId }) {
+            var updatedMessage = messages[index]
+            var reactions = updatedMessage.reactions ?? []
+            reactions.append(Reaction(emoji: emoji, userId: currentUserId, createdAt: ISO8601DateFormatter().string(from: Date())))
+            updatedMessage.reactions = reactions
+            messages[index] = updatedMessage
+        }
+
+        do {
+            _ = try await MessageService.shared.addReaction(token: token, messageId: messageId, emoji: emoji)
+            // Don't immediately refetch - let polling handle sync
+            // This preserves the optimistic update
+        } catch let error as NetworkError {
+            errorMessage = error.errorDescription
+            // Revert on error by refetching
+            await fetchMessages(token: token)
+        } catch {
+            errorMessage = error.localizedDescription
+            await fetchMessages(token: token)
+        }
+    }
+
+    func removeReaction(token: String?, messageId: String, emoji: String) async {
+        guard let token = token, let currentUserId = currentUserId else { return }
+
+        // Optimistically update UI
+        if let index = messages.firstIndex(where: { $0.id == messageId }) {
+            var updatedMessage = messages[index]
+            var reactions = updatedMessage.reactions ?? []
+            reactions.removeAll { $0.userId == currentUserId && $0.emoji == emoji }
+            updatedMessage.reactions = reactions
+            messages[index] = updatedMessage
+        }
+
+        do {
+            try await MessageService.shared.removeReaction(token: token, messageId: messageId, emoji: emoji)
+            // Don't immediately refetch - let polling handle sync
+        } catch let error as NetworkError {
+            errorMessage = error.errorDescription
+            await fetchMessages(token: token)
+        } catch {
+            errorMessage = error.localizedDescription
+            await fetchMessages(token: token)
+        }
+    }
+
+    /// Toggle reaction - add if not present, remove if user already reacted with this emoji
+    func toggleReaction(token: String?, messageId: String, emoji: String) async {
+        guard let token = token, let currentUserId = currentUserId else { return }
+
+        // Find the message and check if user already reacted
+        if let message = messages.first(where: { $0.id == messageId }),
+           let reactions = message.reactions,
+           reactions.contains(where: { $0.userId == currentUserId && $0.emoji == emoji }) {
+            await removeReaction(token: token, messageId: messageId, emoji: emoji)
+        } else {
+            await addReaction(token: token, messageId: messageId, emoji: emoji)
+        }
+    }
+
+    // MARK: - Read Receipts
+
+    func markUnreadMessagesAsRead(token: String) async {
+        guard let currentUserId = currentUserId else { return }
+
+        // Find messages not sent by current user and not yet read by current user
+        let unreadMessageIds = messages
+            .filter { msg in
+                msg.senderId != currentUserId &&
+                !(msg.readBy ?? []).contains(currentUserId)
+            }
+            .map { $0.id }
+
+        guard !unreadMessageIds.isEmpty else { return }
+
+        do {
+            _ = try await MessageService.shared.markMessagesRead(token: token, messageIds: unreadMessageIds)
+            // Update local state to reflect read status
+            for i in 0..<messages.count {
+                if unreadMessageIds.contains(messages[i].id) {
+                    var readBy = messages[i].readBy ?? []
+                    if !readBy.contains(currentUserId) {
+                        readBy.append(currentUserId)
+                        messages[i].readBy = readBy
+                    }
+                }
+            }
+        } catch {
+            // Silent failure for read receipts - not critical
+        }
+    }
+
+    // MARK: - Typing Indicators
+
+    /// Call this when the user is typing. Debounced to avoid excessive API calls.
+    func userIsTyping(token: String?) {
+        guard let token = token else { return }
+
+        // Reset the auto-stop timer
+        typingStopTimer?.invalidate()
+        typingStopTimer = Timer.scheduledTimer(withTimeInterval: typingAutoStopInterval, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                await self?.stopTyping(token: token)
+            }
+        }
+
+        // Debounce: only send if we haven't sent recently
+        let now = Date()
+        if let lastSent = lastTypingSentAt, now.timeIntervalSince(lastSent) < typingDebounceInterval {
+            return
+        }
+
+        lastTypingSentAt = now
+
+        Task {
+            do {
+                _ = try await MessageService.shared.updateTyping(token: token, isTyping: true)
+            } catch {
+                // Silent failure for typing indicator
+            }
+        }
+    }
+
+    /// Call this to stop the typing indicator.
+    func stopTyping(token: String?) async {
+        typingStopTimer?.invalidate()
+        typingStopTimer = nil
+        lastTypingSentAt = nil
+
+        guard let token = token else { return }
+
+        do {
+            _ = try await MessageService.shared.updateTyping(token: token, isTyping: false)
+        } catch {
+            // Silent failure for typing indicator
+        }
     }
 }

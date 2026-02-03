@@ -12,6 +12,10 @@ from auth import get_user_by_id
 
 match_bp = Blueprint('match', __name__)
 
+# Constants for message enhancements
+ALLOWED_REACTIONS = ['👍', '❤️', '😂', '😮', '😢']
+TYPING_EXPIRY_SECONDS = 10  # Must be longer than polling interval
+
 
 def get_today_date_string():
     """Get today's date string in Pacific Time."""
@@ -347,30 +351,71 @@ def get_messages():
 
     match_id = existing_match.key.name or str(existing_match.key.id)
 
+    # Determine partner ID
+    is_user1 = existing_match.get('user1Id') == user_id
+    partner_id = existing_match.get('user2Id') if is_user1 else existing_match.get('user1Id')
+
     # Get messages for this match
     client = get_client()
     query = client.query(kind='Message')
     query.add_filter('matchId', '=', match_id)
     # Note: Sorting in Python to avoid needing a composite index
 
+    # Get all reactions for this match's messages
+    reaction_query = client.query(kind='MessageReaction')
+    reaction_query.add_filter('matchId', '=', match_id)
+    all_reactions = list(reaction_query.fetch())
+
+    # Group reactions by messageId
+    reactions_by_message = {}
+    for reaction in all_reactions:
+        msg_id = reaction.get('messageId')
+        if msg_id not in reactions_by_message:
+            reactions_by_message[msg_id] = []
+        reactions_by_message[msg_id].append({
+            'emoji': reaction.get('emoji'),
+            'userId': reaction.get('userId'),
+            'createdAt': reaction.get('createdAt')
+        })
+
     messages = []
     for msg in query.fetch():
+        msg_id = msg.key.name or str(msg.key.id)
         messages.append({
-            'id': msg.key.name or str(msg.key.id),
+            'id': msg_id,
             'matchId': msg.get('matchId'),
             'senderId': msg.get('senderId'),
             'text': msg.get('text'),
-            'createdAt': msg.get('createdAt')
+            'createdAt': msg.get('createdAt'),
+            'readBy': msg.get('readBy', [msg.get('senderId')]),
+            'reactions': reactions_by_message.get(msg_id, [])
         })
 
     # Sort messages by createdAt
     messages.sort(key=lambda m: m['createdAt'])
 
+    # Check if partner is currently typing
+    partner_is_typing = False
+    typing_key = client.key('TypingIndicator', f'{match_id}_{partner_id}')
+    typing_entity = client.get(typing_key)
+    if typing_entity and typing_entity.get('isTyping'):
+        updated_at = typing_entity.get('updatedAt')
+        if updated_at:
+            # Parse the timestamp and check if it's within expiry window
+            try:
+                updated_time = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                now = datetime.now(pytz.UTC)
+                if (now - updated_time).total_seconds() < TYPING_EXPIRY_SECONDS:
+                    partner_is_typing = True
+            except (ValueError, TypeError):
+                pass
+
     return jsonify({
         'success': True,
         'data': {
             'messages': messages,
-            'matchId': match_id
+            'matchId': match_id,
+            'partnerIsTyping': partner_is_typing
         }
     })
 
@@ -431,12 +476,14 @@ def send_message():
     message_id = str(uuid.uuid4())
     key = client.key('Message', message_id)
 
+    created_at = datetime.utcnow().isoformat() + 'Z'
     entity = Entity(key)
     entity.update({
         'matchId': match_id,
         'senderId': user_id,
         'text': text,
-        'createdAt': datetime.utcnow().isoformat() + 'Z'
+        'readBy': [user_id],  # Sender has read their own message
+        'createdAt': created_at
     })
 
     client.put(entity)
@@ -449,7 +496,286 @@ def send_message():
                 'matchId': match_id,
                 'senderId': user_id,
                 'text': text,
-                'createdAt': entity.get('createdAt')
+                'readBy': [user_id],
+                'reactions': [],
+                'createdAt': created_at
             }
+        }
+    })
+
+
+@match_bp.route('/messages/<message_id>/reactions', methods=['POST'])
+@require_auth
+def add_reaction(message_id):
+    """Add a reaction to a message."""
+    user_id = request.user_id
+    today = get_today_date_string()
+
+    # Find existing match
+    existing_match = get_existing_match(user_id, today)
+
+    if not existing_match:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'NO_MATCH',
+                'message': 'No active match found for today'
+            }
+        }), 400
+
+    match_id = existing_match.key.name or str(existing_match.key.id)
+
+    # Get the message and verify it belongs to this match
+    client = get_client()
+    msg_key = client.key('Message', message_id)
+    message = client.get(msg_key)
+
+    if not message or message.get('matchId') != match_id:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'MESSAGE_NOT_FOUND',
+                'message': 'Message not found'
+            }
+        }), 404
+
+    data = request.get_json()
+    emoji = data.get('emoji', '')
+
+    if emoji not in ALLOWED_REACTIONS:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'VALIDATION_ERROR',
+                'message': f'Invalid reaction. Allowed: {", ".join(ALLOWED_REACTIONS)}'
+            }
+        }), 400
+
+    # Create or update reaction
+    reaction_key = client.key('MessageReaction', f'{message_id}_{user_id}_{emoji}')
+    reaction_entity = Entity(reaction_key)
+    reaction_entity.update({
+        'messageId': message_id,
+        'matchId': match_id,
+        'userId': user_id,
+        'emoji': emoji,
+        'createdAt': datetime.utcnow().isoformat() + 'Z'
+    })
+    client.put(reaction_entity)
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'reaction': {
+                'messageId': message_id,
+                'userId': user_id,
+                'emoji': emoji,
+                'createdAt': reaction_entity.get('createdAt')
+            }
+        }
+    })
+
+
+@match_bp.route('/messages/<message_id>/reactions/<emoji>', methods=['DELETE'])
+@require_auth
+def remove_reaction(message_id, emoji):
+    """Remove a reaction from a message."""
+    user_id = request.user_id
+    today = get_today_date_string()
+
+    # Find existing match
+    existing_match = get_existing_match(user_id, today)
+
+    if not existing_match:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'NO_MATCH',
+                'message': 'No active match found for today'
+            }
+        }), 400
+
+    match_id = existing_match.key.name or str(existing_match.key.id)
+
+    # Get the message and verify it belongs to this match
+    client = get_client()
+    msg_key = client.key('Message', message_id)
+    message = client.get(msg_key)
+
+    if not message or message.get('matchId') != match_id:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'MESSAGE_NOT_FOUND',
+                'message': 'Message not found'
+            }
+        }), 404
+
+    # Delete the reaction (only the user's own reaction)
+    reaction_key = client.key('MessageReaction', f'{message_id}_{user_id}_{emoji}')
+    client.delete(reaction_key)
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'message': 'Reaction removed'
+        }
+    })
+
+
+@match_bp.route('/messages/read', methods=['POST'])
+@require_auth
+def mark_messages_read():
+    """Mark messages as read by the current user."""
+    user_id = request.user_id
+    today = get_today_date_string()
+
+    # Find existing match
+    existing_match = get_existing_match(user_id, today)
+
+    if not existing_match:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'NO_MATCH',
+                'message': 'No active match found for today'
+            }
+        }), 400
+
+    match_id = existing_match.key.name or str(existing_match.key.id)
+
+    data = request.get_json()
+    message_ids = data.get('messageIds', [])
+
+    if not message_ids:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'VALIDATION_ERROR',
+                'message': 'messageIds is required'
+            }
+        }), 400
+
+    client = get_client()
+    updated_count = 0
+
+    for msg_id in message_ids:
+        msg_key = client.key('Message', msg_id)
+        message = client.get(msg_key)
+
+        if message and message.get('matchId') == match_id:
+            read_by = message.get('readBy', [])
+            if user_id not in read_by:
+                read_by.append(user_id)
+                message['readBy'] = read_by
+                client.put(message)
+                updated_count += 1
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'updatedCount': updated_count
+        }
+    })
+
+
+@match_bp.route('/typing', methods=['POST'])
+@require_auth
+def update_typing():
+    """Update typing indicator status."""
+    user_id = request.user_id
+    today = get_today_date_string()
+
+    # Find existing match
+    existing_match = get_existing_match(user_id, today)
+
+    if not existing_match:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'NO_MATCH',
+                'message': 'No active match found for today'
+            }
+        }), 400
+
+    if existing_match.get('status') != 'active':
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'MATCH_INACTIVE',
+                'message': 'Cannot update typing status for inactive match'
+            }
+        }), 400
+
+    match_id = existing_match.key.name or str(existing_match.key.id)
+
+    data = request.get_json()
+    is_typing = data.get('isTyping', False)
+
+    client = get_client()
+    typing_key = client.key('TypingIndicator', f'{match_id}_{user_id}')
+    typing_entity = Entity(typing_key)
+    typing_entity.update({
+        'matchId': match_id,
+        'userId': user_id,
+        'isTyping': is_typing,
+        'updatedAt': datetime.utcnow().isoformat() + 'Z'
+    })
+    client.put(typing_entity)
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'isTyping': is_typing
+        }
+    })
+
+
+@match_bp.route('/typing', methods=['GET'])
+@require_auth
+def get_typing():
+    """Get partner's typing status."""
+    user_id = request.user_id
+    today = get_today_date_string()
+
+    # Find existing match
+    existing_match = get_existing_match(user_id, today)
+
+    if not existing_match:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'NO_MATCH',
+                'message': 'No active match found for today'
+            }
+        }), 400
+
+    match_id = existing_match.key.name or str(existing_match.key.id)
+
+    # Determine partner ID
+    is_user1 = existing_match.get('user1Id') == user_id
+    partner_id = existing_match.get('user2Id') if is_user1 else existing_match.get('user1Id')
+
+    # Get partner's typing status
+    client = get_client()
+    typing_key = client.key('TypingIndicator', f'{match_id}_{partner_id}')
+    typing_entity = client.get(typing_key)
+
+    partner_is_typing = False
+    if typing_entity and typing_entity.get('isTyping'):
+        updated_at = typing_entity.get('updatedAt')
+        if updated_at:
+            try:
+                updated_time = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                now = datetime.now(pytz.UTC)
+                if (now - updated_time).total_seconds() < TYPING_EXPIRY_SECONDS:
+                    partner_is_typing = True
+            except (ValueError, TypeError):
+                pass
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'partnerIsTyping': partner_is_typing
         }
     })

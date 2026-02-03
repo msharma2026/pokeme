@@ -206,6 +206,249 @@ Authorization: Bearer <token>
 
 ---
 
+### GET /match/messages
+
+Get all messages for the current match.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "messages": [
+            {
+                "id": "msg123",
+                "matchId": "match456",
+                "senderId": "user789",
+                "text": "Hello!",
+                "createdAt": "2026-02-01T10:00:00.000Z",
+                "readBy": ["user789", "user012"],
+                "reactions": [
+                    {
+                        "emoji": "👍",
+                        "userId": "user012",
+                        "createdAt": "2026-02-01T10:01:00.000Z"
+                    }
+                ]
+            }
+        ],
+        "matchId": "match456",
+        "partnerIsTyping": false
+    }
+}
+```
+
+**Errors:**
+- `400 NO_MATCH` - No active match found for today
+- `401 UNAUTHORIZED` - Not authenticated
+
+---
+
+### POST /match/messages
+
+Send a message to your current match.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request Body:**
+```json
+{
+    "text": "Hello, nice to meet you!"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "message": {
+            "id": "msg123",
+            "matchId": "match456",
+            "senderId": "user789",
+            "text": "Hello, nice to meet you!",
+            "createdAt": "2026-02-01T10:00:00.000Z",
+            "readBy": ["user789"],
+            "reactions": []
+        }
+    }
+}
+```
+
+**Errors:**
+- `400 NO_MATCH` - No active match found for today
+- `400 MATCH_INACTIVE` - Cannot send messages to a disconnected match
+- `400 VALIDATION_ERROR` - Message text is required or too long (max 1000 characters)
+- `401 UNAUTHORIZED` - Not authenticated
+
+---
+
+### POST /match/messages/:messageId/reactions
+
+Add a reaction to a message.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request Body:**
+```json
+{
+    "emoji": "👍"
+}
+```
+
+**Allowed Reactions:** 👍, ❤️, 😂, 😮, 😢
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "reaction": {
+            "messageId": "msg123",
+            "userId": "user789",
+            "emoji": "👍",
+            "createdAt": "2026-02-01T10:01:00.000Z"
+        }
+    }
+}
+```
+
+**Errors:**
+- `400 NO_MATCH` - No active match found for today
+- `400 VALIDATION_ERROR` - Invalid reaction emoji
+- `404 MESSAGE_NOT_FOUND` - Message not found
+- `401 UNAUTHORIZED` - Not authenticated
+
+---
+
+### DELETE /match/messages/:messageId/reactions/:emoji
+
+Remove a reaction from a message. Users can only remove their own reactions.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "message": "Reaction removed"
+    }
+}
+```
+
+**Errors:**
+- `400 NO_MATCH` - No active match found for today
+- `404 MESSAGE_NOT_FOUND` - Message not found
+- `401 UNAUTHORIZED` - Not authenticated
+
+---
+
+### POST /match/messages/read
+
+Mark messages as read by the current user.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request Body:**
+```json
+{
+    "messageIds": ["msg123", "msg456"]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "updatedCount": 2
+    }
+}
+```
+
+**Errors:**
+- `400 NO_MATCH` - No active match found for today
+- `400 VALIDATION_ERROR` - messageIds is required
+- `401 UNAUTHORIZED` - Not authenticated
+
+---
+
+### POST /match/typing
+
+Update the current user's typing status.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request Body:**
+```json
+{
+    "isTyping": true
+}
+```
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "isTyping": true
+    }
+}
+```
+
+**Errors:**
+- `400 NO_MATCH` - No active match found for today
+- `400 MATCH_INACTIVE` - Cannot update typing status for inactive match
+- `401 UNAUTHORIZED` - Not authenticated
+
+---
+
+### GET /match/typing
+
+Get the partner's typing status. Typing indicators expire after 5 seconds.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "partnerIsTyping": true
+    }
+}
+```
+
+**Errors:**
+- `400 NO_MATCH` - No active match found for today
+- `401 UNAUTHORIZED` - Not authenticated
+
+---
+
 ### GET /health
 
 Health check endpoint.

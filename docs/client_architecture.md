@@ -42,10 +42,12 @@ PokeMe/
 ├── Models/
 │   ├── User.swift               # User data model
 │   ├── Match.swift              # Match data model
+│   ├── Message.swift            # Message, Reaction models and request/response types
 │   └── APIResponse.swift        # Generic API response wrapper
 ├── ViewModels/
 │   ├── AuthViewModel.swift      # Authentication state & logic
-│   └── MatchViewModel.swift     # Match state & logic
+│   ├── MatchViewModel.swift     # Match state & logic
+│   └── ChatViewModel.swift      # Chat state, messaging, reactions, typing
 ├── Views/
 │   ├── Auth/
 │   │   ├── LoginView.swift      # Login screen
@@ -53,6 +55,8 @@ PokeMe/
 │   ├── Home/
 │   │   ├── HomeView.swift       # Main screen with match
 │   │   └── MatchCardView.swift  # Partner info card
+│   ├── Chat/
+│   │   └── ChatView.swift       # Chat screen with messages, reactions, typing
 │   ├── Profile/
 │   │   └── (future)
 │   └── Components/
@@ -60,7 +64,8 @@ PokeMe/
 ├── Services/
 │   ├── NetworkService.swift     # HTTP client
 │   ├── AuthService.swift        # Auth API calls
-│   └── MatchService.swift       # Match API calls
+│   ├── MatchService.swift       # Match API calls
+│   └── MessageService.swift     # Message, reaction, typing API calls
 ├── Utilities/
 │   └── Constants.swift          # API URLs, storage keys
 └── Resources/
@@ -112,6 +117,20 @@ struct Match: Codable, Identifiable {
   - `.error(String)` - Error occurred
 - Provides fetchTodayMatch(), disconnect() methods
 
+#### ChatViewModel
+- Manages chat state:
+  - `messages: [Message]` - List of messages
+  - `partnerIsTyping: Bool` - Typing indicator state
+- Provides methods:
+  - `fetchMessages()` - Get messages with reactions and read status
+  - `sendMessage()` - Send a new message
+  - `addReaction() / removeReaction() / toggleReaction()` - Manage reactions
+  - `markUnreadMessagesAsRead()` - Update read receipts
+  - `userIsTyping()` - Debounced typing indicator updates
+  - `stopTyping()` - Clear typing status
+- Polling: Auto-refreshes messages every 3 seconds
+- Typing debounce: Sends typing updates max every 2 seconds, auto-stops after 3 seconds
+
 ### Services
 
 #### NetworkService
@@ -128,6 +147,16 @@ struct Match: Codable, Identifiable {
 #### MatchService
 - getTodayMatch(token)
 - disconnect(token)
+- poke(token)
+
+#### MessageService
+- getMessages(token) - Get messages with reactions and read status
+- sendMessage(token, text) - Send a message
+- addReaction(token, messageId, emoji) - Add reaction to message
+- removeReaction(token, messageId, emoji) - Remove reaction from message
+- markMessagesRead(token, messageIds) - Mark messages as read
+- updateTyping(token, isTyping) - Update typing status
+- getTypingStatus(token) - Get partner's typing status
 
 ## State Management
 

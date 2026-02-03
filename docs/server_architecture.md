@@ -78,6 +78,40 @@ server/
 }
 ```
 
+#### Message
+```python
+{
+    'matchId': str,         # ID of the match this message belongs to
+    'senderId': str,        # User ID of the sender
+    'text': str,            # Message content (max 1000 chars)
+    'readBy': list[str],    # List of user IDs who have read the message
+    'createdAt': str        # ISO timestamp
+}
+```
+
+#### MessageReaction
+Key format: `{messageId}_{userId}_{emoji}`
+```python
+{
+    'messageId': str,       # ID of the message being reacted to
+    'matchId': str,         # ID of the match (for querying)
+    'userId': str,          # User ID who added the reaction
+    'emoji': str,           # One of: 👍, ❤️, 😂, 😮, 😢
+    'createdAt': str        # ISO timestamp
+}
+```
+
+#### TypingIndicator
+Key format: `{matchId}_{userId}`
+```python
+{
+    'matchId': str,         # ID of the match
+    'userId': str,          # User ID who is typing
+    'isTyping': bool,       # Whether the user is currently typing
+    'updatedAt': str        # ISO timestamp (expires after 5 seconds)
+}
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -94,6 +128,19 @@ server/
 |--------|----------|-------------|------|
 | GET | /api/match/today | Get today's match | Yes |
 | POST | /api/match/disconnect | Disconnect from match | Yes |
+| POST | /api/match/poke | Poke your match | Yes |
+
+### Messaging
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | /api/match/messages | Get messages for current match | Yes |
+| POST | /api/match/messages | Send a message | Yes |
+| POST | /api/match/messages/:id/reactions | Add reaction to message | Yes |
+| DELETE | /api/match/messages/:id/reactions/:emoji | Remove reaction | Yes |
+| POST | /api/match/messages/read | Mark messages as read | Yes |
+| POST | /api/match/typing | Update typing status | Yes |
+| GET | /api/match/typing | Get partner's typing status | Yes |
 
 ### Utility
 
