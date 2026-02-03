@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var matchViewModel = MatchViewModel()
+    @StateObject private var messageNotificationPoller = MessageNotificationPoller()
     @State private var showProfile = false
     @State private var showChat = false
     @State private var currentPartnerName = ""
@@ -166,6 +167,19 @@ struct HomeView: View {
             }
             .onDisappear {
                 matchViewModel.stopPolling()
+                messageNotificationPoller.stopPolling()
+            }
+            .onChange(of: matchViewModel.matchState) { newState in
+                switch newState {
+                case .matched(let match):
+                    messageNotificationPoller.updateContext(matchId: match.id, partnerName: match.partnerName)
+                    messageNotificationPoller.startPolling(
+                        token: authViewModel.getToken(),
+                        currentUserId: authViewModel.user?.id
+                    )
+                default:
+                    messageNotificationPoller.stopPolling()
+                }
             }
         }
     }

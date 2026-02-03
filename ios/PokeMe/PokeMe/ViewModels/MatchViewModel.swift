@@ -30,6 +30,9 @@ class MatchViewModel: ObservableObject {
     @Published var isLoading = false
 
     private var pollTimer: Timer?
+    private var hasLoadedOnce = false
+    private var lastMatchId: String?
+    private var lastPartnerPokes: Int?
 
     func fetchTodayMatch(token: String?) async {
         guard let token = token else {
@@ -45,6 +48,7 @@ class MatchViewModel: ObservableObject {
             switch response.status {
             case "matched":
                 if let match = response.match {
+                    handleMatchUpdate(match)
                     matchState = .matched(match)
                 } else {
                     matchState = .error("Match data missing")
@@ -53,6 +57,7 @@ class MatchViewModel: ObservableObject {
                 matchState = .waiting
             case "disconnected":
                 matchState = .disconnected(nextMatchAt: response.nextMatchAt ?? "tomorrow")
+                resetMatchTracking()
             default:
                 matchState = .error("Unknown status")
             }
@@ -62,6 +67,7 @@ class MatchViewModel: ObservableObject {
             matchState = .error(error.localizedDescription)
         }
 
+        hasLoadedOnce = true
         isLoading = false
     }
 
@@ -76,6 +82,7 @@ class MatchViewModel: ObservableObject {
         do {
             let response = try await MatchService.shared.disconnect(token: token)
             matchState = .disconnected(nextMatchAt: response.nextMatchAt)
+            resetMatchTracking()
         } catch let error as NetworkError {
             matchState = .error(error.errorDescription ?? "Unknown error")
         } catch {
@@ -93,6 +100,7 @@ class MatchViewModel: ObservableObject {
 
         do {
             let response = try await MatchService.shared.poke(token: token)
+            handleMatchUpdate(response.match)
             matchState = .matched(response.match)
         } catch let error as NetworkError {
             matchState = .error(error.errorDescription ?? "Unknown error")
@@ -126,10 +134,12 @@ class MatchViewModel: ObservableObject {
             switch response.status {
             case "matched":
                 if let match = response.match {
+                    handleMatchUpdate(match)
                     matchState = .matched(match)
                 }
             case "disconnected":
                 matchState = .disconnected(nextMatchAt: response.nextMatchAt ?? "tomorrow")
+                resetMatchTracking()
                 stopPolling()
             default:
                 break
@@ -137,5 +147,37 @@ class MatchViewModel: ObservableObject {
         } catch {
             // Silently fail on refresh - don't update error state
         }
+    }
+
+    private func handleMatchUpdate(_ match: Match) {
+        defer {
+            lastMatchId = match.id
+            lastPartnerPokes = match.partnerPokes
+            hasLoadedOnce = true
+        }
+
+        guard hasLoadedOnce else { return }
+
+        if lastMatchId != match.id {
+            NotificationManager.shared.notify(
+                title: "New Match!",
+                body: "You matched with \(match.partnerName). Say hi!"
+            )
+            return
+        }
+
+        if let previousPokes = lastPartnerPokes,
+           match.partnerPokes > previousPokes {
+            NotificationManager.shared.notify(
+                title: "You got a poke!",
+                body: "\(match.partnerName) poked you."
+            )
+        }
+    }
+
+    private func resetMatchTracking() {
+        lastMatchId = nil
+        lastPartnerPokes = nil
+        hasLoadedOnce = false
     }
 }

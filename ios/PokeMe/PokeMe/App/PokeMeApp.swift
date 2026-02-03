@@ -6,15 +6,20 @@ struct PokeMeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if authViewModel.isAuthenticated {
-                HomeView()
-                    .environmentObject(authViewModel)
-            } else if authViewModel.showEmailLogin {
-                LoginView()
-                    .environmentObject(authViewModel)
-            } else {
-                PhoneLoginView()
-                    .environmentObject(authViewModel)
+            Group {
+                if authViewModel.isAuthenticated {
+                    HomeView()
+                        .environmentObject(authViewModel)
+                } else if authViewModel.showEmailLogin {
+                    LoginView()
+                        .environmentObject(authViewModel)
+                } else {
+                    PhoneLoginView()
+                        .environmentObject(authViewModel)
+                }
+            }
+            .onAppear {
+                NotificationManager.shared.requestAuthorizationIfNeeded()
             }
         }
     }

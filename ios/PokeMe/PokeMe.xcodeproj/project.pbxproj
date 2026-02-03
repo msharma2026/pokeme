@@ -8,7 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		1D8C71B0FE30FC939E56A30E /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CACC8E6082A6E7EFCE69C64 /* Constants.swift */; };
+		C3D4E5F60718293A4B5C6D7E /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E2C3D4B5F60718293A4B5C /* NotificationManager.swift */; };
 		2B2B8B946F06E72968DDDA80 /* MatchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64B60F2397FACE24BCD86520 /* MatchViewModel.swift */; };
+		D4E5F60718293A4B5C6D7E8F /* MessageNotificationPoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60718293A4B5C6D /* MessageNotificationPoller.swift */; };
 		3A16BD5D2343CB1563BE65F5 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB97E34932BE2D88C528C58A /* ProfileView.swift */; };
 		3AC42A4183E56ED2B7EE01F4 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB19A5FC8ECAC75BD4373DF /* LoginView.swift */; };
 		42AC334042D7C4AC3056B06D /* PokeMeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBF95104522024B8B68D2B31 /* PokeMeApp.swift */; };
@@ -65,6 +67,8 @@
 		8CACC8E6082A6E7EFCE69C64 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		963ADC7F0C37B714FA072C5E /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		9BB9313AB993FE2599C176F1 /* ChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		A1E2C3D4B5F60718293A4B5C /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		B2C3D4E5F60718293A4B5C6D /* MessageNotificationPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageNotificationPoller.swift; sourceTree = "<group>"; };
 		B5044193EB50C1D1CA5112F5 /* MatchCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchCardView.swift; sourceTree = "<group>"; };
 		CBF95104522024B8B68D2B31 /* PokeMeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PokeMeApp.swift; sourceTree = "<group>"; };
 		CE86E5D860927083FB2C3392 /* Match.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Match.swift; sourceTree = "<group>"; };
@@ -89,6 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				8CACC8E6082A6E7EFCE69C64 /* Constants.swift */,
+				A1E2C3D4B5F60718293A4B5C /* NotificationManager.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -148,6 +153,7 @@
 				64B60F2397FACE24BCD86520 /* MatchViewModel.swift */,
 				DA042010EE252EADC0F83D60 /* ProfileViewModel.swift */,
 				5CC76A347FDAE938F3AE0487 /* ChatViewModel.swift */,
+				B2C3D4E5F60718293A4B5C6D /* MessageNotificationPoller.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -306,12 +312,14 @@
 				F3D7FE594C44983D1A4CF0E0 /* AuthService.swift in Sources */,
 				795FE257DBA03A9F3D1F0C5C /* AuthViewModel.swift in Sources */,
 				1D8C71B0FE30FC939E56A30E /* Constants.swift in Sources */,
+				C3D4E5F60718293A4B5C6D7E /* NotificationManager.swift in Sources */,
 				DEAE6D07C60D061996582ABE /* HomeView.swift in Sources */,
 				3AC42A4183E56ED2B7EE01F4 /* LoginView.swift in Sources */,
 				EEAFD4C11CB0CBB260334224 /* Match.swift in Sources */,
 				A0ABD37782000374CC10F595 /* MatchCardView.swift in Sources */,
 				7EA71BBECD647895360762A8 /* MatchService.swift in Sources */,
 				2B2B8B946F06E72968DDDA80 /* MatchViewModel.swift in Sources */,
+				D4E5F60718293A4B5C6D7E8F /* MessageNotificationPoller.swift in Sources */,
 				849F27A578C50678429B7F13 /* NetworkService.swift in Sources */,
 				65E42863626E7EBF74BE4D1E /* PhoneAuthService.swift in Sources */,
 				E6CC100073B1D69EC90761C3 /* PhoneLoginView.swift in Sources */,
