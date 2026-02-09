@@ -11,11 +11,21 @@ enum Constants {
         static let me = "/auth/me"
         static let profile = "/auth/profile"
         static let profilePicture = "/auth/profile-picture"
-        static let todayMatch = "/match/today"
-        static let disconnect = "/match/disconnect"
-        static let poke = "/match/poke"
-        static let messages = "/match/messages"
-        static let typing = "/match/typing"
+        static let discover = "/discover"
+        static let matches = "/matches"
+        static let incomingPokes = "/pokes/incoming"
+
+        static func poke(_ userId: String) -> String { "/poke/\(userId)" }
+        static func messages(_ matchId: String) -> String { "/matches/\(matchId)/messages" }
+        static func typing(_ matchId: String) -> String { "/matches/\(matchId)/typing" }
+        static func reactions(_ matchId: String, _ messageId: String) -> String {
+            "/matches/\(matchId)/messages/\(messageId)/reactions"
+        }
+        static func removeReaction(_ matchId: String, _ messageId: String, _ emoji: String) -> String {
+            let encoded = emoji.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? emoji
+            return "/matches/\(matchId)/messages/\(messageId)/reactions/\(encoded)"
+        }
+        static func markRead(_ matchId: String) -> String { "/matches/\(matchId)/messages/read" }
     }
 
     enum StorageKeys {

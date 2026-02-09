@@ -16,31 +16,13 @@ def user_to_dict(entity, include_password=False):
         'bio': entity.get('bio'),
         'profilePicture': entity.get('profilePicture'),
         'socials': entity.get('socials', {}),
-        'socialPoints': entity.get('socialPoints', Config.INITIAL_SOCIAL_POINTS),
+        'sports': entity.get('sports', []),
+        'collegeYear': entity.get('collegeYear'),
+        'availability': entity.get('availability', {}),
         'createdAt': entity.get('createdAt'),
     }
 
     if include_password:
         result['passwordHash'] = entity.get('passwordHash')
-
-    return result
-
-
-def match_to_dict(entity, partner=None):
-    """Convert a Datastore match entity to a dictionary for API response."""
-    if entity is None:
-        return None
-
-    result = {
-        'id': entity.key.name or str(entity.key.id),
-        'date': entity.get('date'),
-        'status': entity.get('status'),
-        'createdAt': entity.get('createdAt'),
-    }
-
-    if partner:
-        result['partnerId'] = partner.get('id')
-        result['partnerName'] = partner.get('displayName')
-        result['partnerMajor'] = partner.get('major')
 
     return result

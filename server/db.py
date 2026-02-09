@@ -10,6 +10,6 @@ def get_client():
     return client
 
 
-def Entity(key):
+def Entity(key, exclude_from_indexes=None):
     """Create a Datastore entity."""
-    return datastore.Entity(key=key)
+    return datastore.Entity(key=key, exclude_from_indexes=exclude_from_indexes or [])

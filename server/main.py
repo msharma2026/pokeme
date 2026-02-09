@@ -12,7 +12,7 @@ from phone_auth import phone_auth_bp
 
 # Register blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
-app.register_blueprint(match_bp, url_prefix='/api/match')
+app.register_blueprint(match_bp, url_prefix='/api')
 app.register_blueprint(phone_auth_bp, url_prefix='/api/phone')
 
 

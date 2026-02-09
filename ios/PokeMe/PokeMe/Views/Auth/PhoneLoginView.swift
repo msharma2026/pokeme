@@ -7,80 +7,136 @@ struct PhoneLoginView: View {
     @State private var errorMessage: String?
     @State private var showVerification = false
     @State private var normalizedPhone = ""
+    @State private var animateGradient = false
+    @State private var bounceEmoji = false
+
+    private let sportEmojis = ["🏀", "⚽", "🎾", "🏐", "🏸", "🏊", "🚴", "🏓"]
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Logo/Title
-            VStack(spacing: 8) {
-                Text("PokeMe")
-                    .font(.system(size: 48, weight: .bold))
-                    .foregroundColor(.blue)
+        ZStack {
+            // Animated gradient background
+            LinearGradient(
+                colors: animateGradient
+                    ? [Color.orange, Color.pink, Color.purple]
+                    : [Color.purple, Color.blue, Color.cyan],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            .animation(.easeInOut(duration: 4).repeatForever(autoreverses: true), value: animateGradient)
 
-                Text("Enter your phone number")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.top, 60)
-
-            Spacer()
-
-            // Phone Input
-            VStack(spacing: 16) {
-                HStack {
-                    Text("+1")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
-                        .padding(.leading, 12)
-
-                    TextField("(530) 555-0000", text: $phoneNumber)
-                        .font(.title2)
-                        .keyboardType(.phonePad)
-                        .textContentType(.telephoneNumber)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-
-                Text("For testing, use: 530-555-0000")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                if let error = errorMessage {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .font(.caption)
-                }
-
-                Button(action: sendCode) {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Send Code")
+            VStack(spacing: 24) {
+                // Animated sport emojis
+                HStack(spacing: 12) {
+                    ForEach(Array(sportEmojis.prefix(5).enumerated()), id: \.offset) { index, emoji in
+                        Text(emoji)
+                            .font(.system(size: 28))
+                            .offset(y: bounceEmoji ? -8 : 8)
+                            .animation(
+                                .easeInOut(duration: 0.6)
+                                    .repeatForever(autoreverses: true)
+                                    .delay(Double(index) * 0.15),
+                                value: bounceEmoji
+                            )
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(phoneNumber.count >= 10 ? Color.blue : Color.gray)
-                .foregroundColor(.white)
-                .cornerRadius(10)
-                .disabled(isLoading || phoneNumber.count < 10)
-            }
-            .padding(.horizontal, 32)
+                .padding(.top, 50)
 
-            Spacer()
+                // Logo/Title
+                VStack(spacing: 8) {
+                    Text("PokeMe")
+                        .font(.system(size: 52, weight: .black, design: .rounded))
+                        .foregroundStyle(
+                            .linearGradient(
+                                colors: [.white, .white.opacity(0.85)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
 
-            // Email login option
-            Button(action: { authViewModel.showEmailLogin = true }) {
-                HStack {
-                    Text("Prefer email?")
-                        .foregroundColor(.secondary)
-                    Text("Login with email")
-                        .foregroundColor(.blue)
-                        .fontWeight(.semibold)
+                    Text("Find your sports partner")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.8))
                 }
+
+                Spacer()
+
+                // Phone Input Card
+                VStack(spacing: 16) {
+                    HStack {
+                        Text("+1")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.orange)
+                            .padding(.leading, 12)
+
+                        TextField("(530) 555-0000", text: $phoneNumber)
+                            .font(.title2)
+                            .keyboardType(.phonePad)
+                            .textContentType(.telephoneNumber)
+                    }
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(16)
+
+                    Text("For testing, use: 530-555-0000")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+
+                    if let error = errorMessage {
+                        Text(error)
+                            .foregroundColor(.yellow)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+
+                    Button(action: sendCode) {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            HStack {
+                                Text("Send Code")
+                                    .fontWeight(.bold)
+                                Image(systemName: "arrow.right.circle.fill")
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        phoneNumber.count >= 10
+                            ? LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                            : LinearGradient(colors: [.gray.opacity(0.5), .gray.opacity(0.5)], startPoint: .leading, endPoint: .trailing)
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(16)
+                    .shadow(color: phoneNumber.count >= 10 ? .orange.opacity(0.4) : .clear, radius: 12, x: 0, y: 6)
+                    .disabled(isLoading || phoneNumber.count < 10)
+                    .scaleEffect(phoneNumber.count >= 10 ? 1.0 : 0.97)
+                    .animation(.spring(response: 0.3), value: phoneNumber.count >= 10)
+                }
+                .padding(.horizontal, 28)
+
+                Spacer()
+
+                // Email login option
+                Button(action: { authViewModel.showEmailLogin = true }) {
+                    HStack {
+                        Text("Prefer email?")
+                            .foregroundColor(.white.opacity(0.6))
+                        Text("Login with email")
+                            .foregroundColor(.white)
+                            .fontWeight(.semibold)
+                    }
+                }
+                .padding(.bottom, 32)
             }
-            .padding(.bottom, 32)
+        }
+        .onAppear {
+            animateGradient = true
+            bounceEmoji = true
         }
         .sheet(isPresented: $showVerification) {
             VerifyCodeView(phone: normalizedPhone)
@@ -92,7 +148,6 @@ struct PhoneLoginView: View {
         isLoading = true
         errorMessage = nil
 
-        // Normalize phone number
         let digits = phoneNumber.filter { $0.isNumber }
         normalizedPhone = "+1" + digits
 
