@@ -14,6 +14,7 @@ enum Constants {
         static let discover = "/discover"
         static let matches = "/matches"
         static let incomingPokes = "/pokes/incoming"
+        static let adminReset = "/admin/reset"
 
         static func poke(_ userId: String) -> String { "/poke/\(userId)" }
         static func messages(_ matchId: String) -> String { "/matches/\(matchId)/messages" }

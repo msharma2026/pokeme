@@ -11,6 +11,9 @@ struct SettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode: String = AppearanceMode.system.rawValue
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @Environment(\.dismiss) var dismiss
+    @State private var showResetConfirm = false
+    @State private var resetResult: String?
+    @State private var isResetting = false
 
     var body: some View {
         NavigationView {
@@ -60,6 +63,38 @@ struct SettingsView: View {
                         )
                 }
 
+                // Testing
+                Section {
+                    Button(action: {
+                        showResetConfirm = true
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.counterclockwise")
+                                .foregroundColor(.orange)
+                            Text("Reset Pokes & Matches")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if isResetting {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(isResetting)
+
+                    if let result = resetResult {
+                        Text(result)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Label("Testing", systemImage: "hammer.fill")
+                        .foregroundStyle(
+                            .linearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing)
+                        )
+                } footer: {
+                    Text("Clears all your pokes and matches so you can re-discover users.")
+                }
+
                 // About
                 Section {
                     HStack {
@@ -93,7 +128,29 @@ struct SettingsView: View {
                         .foregroundColor(.orange)
                 }
             }
+            .alert("Reset Test Data?", isPresented: $showResetConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Reset", role: .destructive) {
+                    Task {
+                        await resetData()
+                    }
+                }
+            } message: {
+                Text("This will delete all your pokes and matches. You'll be able to discover and poke users again.")
+            }
         }
+    }
+
+    private func resetData() async {
+        guard let token = UserDefaults.standard.string(forKey: Constants.StorageKeys.authToken) else { return }
+        isResetting = true
+        do {
+            let response = try await MatchService.shared.resetTestData(token: token)
+            resetResult = "Deleted \(response.deletedPokes) pokes, \(response.deletedMatches) matches"
+        } catch {
+            resetResult = "Error: \(error.localizedDescription)"
+        }
+        isResetting = false
     }
 }
 

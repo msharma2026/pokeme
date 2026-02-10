@@ -41,4 +41,12 @@ class MatchService {
             token: token
         )
     }
+
+    func resetTestData(token: String) async throws -> ResetResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.adminReset,
+            method: .POST,
+            token: token
+        )
+    }
 }

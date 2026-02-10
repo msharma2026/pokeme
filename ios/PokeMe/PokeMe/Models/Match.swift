@@ -43,3 +43,8 @@ struct IncomingPokesResponse: Codable {
     let pokes: [IncomingPoke]
     let count: Int
 }
+
+struct ResetResponse: Codable {
+    let deletedPokes: Int
+    let deletedMatches: Int
+}

@@ -78,9 +78,10 @@ struct DiscoverCardView: View {
                                         .fontWeight(.medium)
                                     Text(sport.skillLevel)
                                         .font(.caption2)
+                                        .foregroundColor(.primary)
                                         .padding(.horizontal, 6)
                                         .padding(.vertical, 2)
-                                        .background(.white)
+                                        .background(Color(.secondarySystemBackground))
                                         .cornerRadius(8)
                                 }
                                 .padding(.horizontal, 10)
