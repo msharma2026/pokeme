@@ -40,34 +40,58 @@ PokeMe/
 ├── App/
 │   └── PokeMeApp.swift          # App entry point, auth routing
 ├── Models/
-│   ├── User.swift               # User data model
-│   ├── Match.swift              # Match data model
-│   ├── Message.swift            # Message, Reaction models and request/response types
+│   ├── User.swift               # User, SportEntry, Socials data models
+│   ├── Match.swift              # Match, IncomingPoke data models
+│   ├── Message.swift            # Message, Reaction, MessageMetadata models
+│   ├── Session.swift            # Session, SharedSport, CompatibleTimesResponse
+│   ├── Meetup.swift             # Meetup, CreateMeetupRequest models
 │   └── APIResponse.swift        # Generic API response wrapper
 ├── ViewModels/
 │   ├── AuthViewModel.swift      # Authentication state & logic
 │   ├── MatchViewModel.swift     # Match state & logic
-│   └── ChatViewModel.swift      # Chat state, messaging, reactions, typing
+│   ├── ChatViewModel.swift      # Chat, messaging, reactions, typing, sessions
+│   ├── DiscoverViewModel.swift  # Discovery browsing
+│   ├── PokesViewModel.swift     # Incoming pokes
+│   ├── ProfileViewModel.swift   # Profile editing
+│   └── MeetupViewModel.swift    # Meetup list, filters, CRUD
 ├── Views/
 │   ├── Auth/
 │   │   ├── LoginView.swift      # Login screen
-│   │   └── RegisterView.swift   # Registration screen
+│   │   ├── RegisterView.swift   # Registration screen
+│   │   ├── PhoneLoginView.swift # Phone auth
+│   │   └── VerifyCodeView.swift # Phone verification
 │   ├── Home/
-│   │   ├── HomeView.swift       # Main screen with match
+│   │   ├── HomeView.swift       # Tab bar (5 tabs: Discover, Pokes, Matches, Meetups, Profile)
+│   │   ├── DiscoverView.swift   # Profile browsing
+│   │   ├── IncomingPokesView.swift # Incoming pokes list
+│   │   ├── MatchesListView.swift # Matches list
 │   │   └── MatchCardView.swift  # Partner info card
 │   ├── Chat/
-│   │   └── ChatView.swift       # Chat screen with messages, reactions, typing
+│   │   ├── ChatView.swift       # Chat with messages, reactions, typing, schedule button
+│   │   ├── ProposalSheet.swift  # Session proposal form (compatible times)
+│   │   └── SessionProposalBubble.swift # Inline session card in chat
 │   ├── Profile/
-│   │   └── (future)
-│   └── Components/
-│       └── (reusable components)
+│   │   ├── ProfileView.swift    # Profile display
+│   │   ├── EditProfileView.swift # Edit profile with hour picker
+│   │   └── HourPickerSheet.swift # Specific hour range picker
+│   ├── Meetups/
+│   │   ├── MeetupsListView.swift    # Sport filter pills + meetup cards
+│   │   ├── MeetupCardView.swift     # Meetup card component
+│   │   ├── CreateMeetupView.swift   # Create meetup form
+│   │   └── MeetupDetailView.swift   # Full meetup details + actions
+│   └── Settings/
+│       └── SettingsView.swift   # App settings
 ├── Services/
 │   ├── NetworkService.swift     # HTTP client
 │   ├── AuthService.swift        # Auth API calls
 │   ├── MatchService.swift       # Match API calls
-│   └── MessageService.swift     # Message, reaction, typing API calls
+│   ├── MessageService.swift     # Message, reaction, typing, session API calls
+│   ├── MeetupService.swift      # Meetup API calls
+│   ├── ProfileService.swift     # Profile API calls
+│   └── PhoneAuthService.swift   # Phone auth API calls
 ├── Utilities/
-│   └── Constants.swift          # API URLs, storage keys
+│   ├── Constants.swift          # API URLs, storage keys
+│   └── AvailabilityHelper.swift # Expand/format/group availability hours
 └── Resources/
     └── Assets.xcassets
 ```

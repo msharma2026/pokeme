@@ -26,6 +26,9 @@ struct EditProfileView: View {
     @State private var newSport = Sport.basketball
     @State private var newSkillLevel = SkillLevel.beginner
 
+    // For adding specific hours
+    @State private var showHourPicker = false
+
     private let timeSlots = ["Morning", "Afternoon", "Evening"]
     private let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     private let dayAbbreviations = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -157,6 +160,50 @@ struct EditProfileView: View {
                         }
                     }
                     .padding(.vertical, 4)
+
+                    // Custom hour entries
+                    let customHours = getCustomHourEntries()
+                    if !customHours.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Custom Hours")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
+
+                            ForEach(customHours, id: \.day) { entry in
+                                HStack {
+                                    Text(entry.day)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    Text(entry.display)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Button(action: {
+                                        removeCustomHours(day: entry.day)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.red)
+                                            .font(.caption)
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+
+                    Button(action: { showHourPicker = true }) {
+                        HStack {
+                            Image(systemName: "clock.badge.plus")
+                                .foregroundColor(.blue)
+                            Text("Add specific hours")
+                                .font(.subheadline)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
 
                 // Bio
@@ -250,6 +297,9 @@ struct EditProfileView: View {
             }
             .sheet(isPresented: $showAddSport) {
                 addSportSheet
+            }
+            .sheet(isPresented: $showHourPicker) {
+                HourPickerSheet(availability: $availability)
             }
         }
     }
@@ -349,6 +399,32 @@ struct EditProfileView: View {
                 }
             }
         }
+    }
+
+    private struct CustomHourEntry: Identifiable {
+        let day: String
+        let display: String
+        var id: String { day }
+    }
+
+    private func getCustomHourEntries() -> [CustomHourEntry] {
+        let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        var entries: [CustomHourEntry] = []
+        for day in days {
+            guard let slots = availability[day] else { continue }
+            let customHours = slots.compactMap { AvailabilityHelper.parseHour($0) }
+            if !customHours.isEmpty {
+                let ranges = AvailabilityHelper.groupHoursIntoRanges(customHours)
+                entries.append(CustomHourEntry(day: day, display: ranges.joined(separator: ", ")))
+            }
+        }
+        return entries
+    }
+
+    private func removeCustomHours(day: String) {
+        guard var slots = availability[day] else { return }
+        slots.removeAll { AvailabilityHelper.parseHour($0) != nil }
+        availability[day] = slots.isEmpty ? nil : slots
     }
 
     private func resizeImage(_ image: UIImage, maxDimension: CGFloat) -> UIImage {

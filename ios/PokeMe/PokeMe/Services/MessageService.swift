@@ -68,4 +68,49 @@ class MessageService {
             token: token
         )
     }
+
+    // MARK: - Sessions
+
+    func getCompatibleTimes(token: String, matchId: String) async throws -> CompatibleTimesResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.compatibleTimes(matchId),
+            method: .GET,
+            token: token
+        )
+    }
+
+    func createSession(token: String, matchId: String, request body: CreateSessionRequest) async throws -> SessionResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.sessions(matchId),
+            method: .POST,
+            body: body,
+            token: token
+        )
+    }
+
+    func updateSession(token: String, matchId: String, sessionId: String, action: String) async throws -> SessionResponse {
+        let body = UpdateSessionRequest(action: action)
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.updateSession(matchId, sessionId),
+            method: .PUT,
+            body: body,
+            token: token
+        )
+    }
+
+    func getSessions(token: String, matchId: String) async throws -> SessionsListResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.sessions(matchId),
+            method: .GET,
+            token: token
+        )
+    }
+
+    func getUpcomingSessions(token: String) async throws -> SessionsListResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.upcomingSessions,
+            method: .GET,
+            token: token
+        )
+    }
 }

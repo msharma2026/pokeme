@@ -6,21 +6,32 @@ PokeMe is a college-campus social app designed to help students make meaningful 
 
 ## Core Features
 
-### Daily Pairing
-- Users receive one random match per day
-- Optional filters (like major) can influence matching
-- If a user disconnects from their match, they must wait until the next day for a new one
+### Discovery & Matching
+- Browse other users' profiles, filtered by sport
+- Poke users you're interested in playing with
+- Mutual pokes create a match with a chat channel
 
-### Social Interactions
-- **Chat**: Message your daily match
-- **Photos**: Share photos with a cooldown mechanic
-- **Pokes**: Send pokes to your match (costs social points)
+### Flexible Availability
+- Set availability using shortcuts (Morning/Afternoon/Evening) per day
+- Add specific hour ranges (e.g., 2 PM - 4 PM on Monday)
+- Stored as `[String: [String]]` dict — values can be shortcuts or "HH:00" strings
 
-### Gamification
-- **Social Points**: Earned through interactions, spent on features like pokes
-- **Starting Balance**: 100 points for new users
-- **Leaderboards**: Compete with other users (future feature)
-- **Side Quests**: Complete challenges for rewards (future feature)
+### Compatible Playtimes & Sessions
+- View overlapping availability and shared sports with a match
+- Propose play sessions (sport, day, time, location) directly from chat
+- Session proposals appear as interactive cards in chat with Accept/Decline buttons
+- Track upcoming accepted sessions
+
+### Public Meetups
+- Create public meetups for any sport with date, time, location, skill levels, and player limit
+- Browse and filter meetups by sport
+- Join or leave meetups; hosts can cancel
+- Dedicated "Meetups" tab in the app
+
+### Chat
+- Real-time messaging with matched users
+- Message reactions, read receipts, typing indicators
+- Session proposal cards inline in chat
 
 ## Technology Stack
 
@@ -82,7 +93,9 @@ pokeme/
 ├── server/                  # Python Flask backend
 │   ├── main.py             # Flask app entry
 │   ├── auth.py             # Auth routes & logic
-│   ├── match.py            # Matching algorithm
+│   ├── match.py            # Matching, messaging, sessions
+│   ├── meetup.py           # Public meetups blueprint
+│   ├── models.py           # Entity helpers (user, session, meetup)
 │   ├── app.yaml            # App Engine config
 │   └── tests/              # Pytest tests
 └── proposal.md             # Original proposal

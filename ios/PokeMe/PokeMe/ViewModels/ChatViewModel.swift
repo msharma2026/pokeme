@@ -177,6 +177,22 @@ class ChatViewModel: ObservableObject {
         } catch {}
     }
 
+    // MARK: - Sessions
+
+    func respondToSession(token: String?, sessionId: String, action: String) async {
+        guard let token = token, let matchId = matchId else { return }
+
+        do {
+            _ = try await MessageService.shared.updateSession(
+                token: token,
+                matchId: matchId,
+                sessionId: sessionId,
+                action: action
+            )
+            await fetchMessages(token: token)
+        } catch {}
+    }
+
     // MARK: - Typing Indicators
 
     func userIsTyping(token: String?) {

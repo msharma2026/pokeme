@@ -10,6 +10,7 @@ struct ChatView: View {
 
     @State private var messageText = ""
     @State private var selectedMessageForReaction: Message?
+    @State private var showProposalSheet = false
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
@@ -20,14 +21,40 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(viewModel.messages) { message in
-                                MessageBubble(
-                                    message: message,
-                                    currentUserId: authViewModel.user?.id ?? "",
-                                    onReactionTap: {
-                                        selectedMessageForReaction = message
-                                    }
-                                )
-                                .id(message.id)
+                                if message.isSessionProposal || message.isSessionResponse {
+                                    SessionProposalBubble(
+                                        message: message,
+                                        currentUserId: authViewModel.user?.id ?? "",
+                                        onAccept: { sessionId in
+                                            Task {
+                                                await viewModel.respondToSession(
+                                                    token: authViewModel.getToken(),
+                                                    sessionId: sessionId,
+                                                    action: "accept"
+                                                )
+                                            }
+                                        },
+                                        onDecline: { sessionId in
+                                            Task {
+                                                await viewModel.respondToSession(
+                                                    token: authViewModel.getToken(),
+                                                    sessionId: sessionId,
+                                                    action: "decline"
+                                                )
+                                            }
+                                        }
+                                    )
+                                    .id(message.id)
+                                } else {
+                                    MessageBubble(
+                                        message: message,
+                                        currentUserId: authViewModel.user?.id ?? "",
+                                        onReactionTap: {
+                                            selectedMessageForReaction = message
+                                        }
+                                    )
+                                    .id(message.id)
+                                }
                             }
 
                             if viewModel.partnerIsTyping {
@@ -101,6 +128,12 @@ struct ChatView: View {
                         .foregroundColor(.orange)
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showProposalSheet = true }) {
+                        Image(systemName: "calendar.badge.plus")
+                            .foregroundColor(.orange)
+                    }
+                }
             }
             .onAppear {
                 viewModel.configure(
@@ -117,6 +150,17 @@ struct ChatView: View {
                 Task {
                     await viewModel.stopTyping(token: authViewModel.getToken())
                 }
+            }
+            .sheet(isPresented: $showProposalSheet) {
+                ProposalSheet(
+                    matchId: matchId,
+                    token: authViewModel.getToken(),
+                    onProposed: {
+                        Task {
+                            await viewModel.fetchMessages(token: authViewModel.getToken())
+                        }
+                    }
+                )
             }
             .sheet(item: $selectedMessageForReaction) { message in
                 ReactionPickerSheet(

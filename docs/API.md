@@ -449,6 +449,170 @@ Authorization: Bearer <token>
 
 ---
 
+### GET /matches/:matchId/compatible-times
+
+Compute overlap of both users' expanded availability and shared sports.
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "compatibleTimes": {
+            "Monday": ["9:00", "10:00", "14:00", "15:00"],
+            "Wednesday": ["17:00", "18:00"]
+        },
+        "sharedSports": [
+            {
+                "sport": "Tennis",
+                "userLevel": "Intermediate",
+                "partnerLevel": "Beginner"
+            }
+        ]
+    }
+}
+```
+
+---
+
+### POST /matches/:matchId/sessions
+
+Create a session proposal. Auto-creates a system message in chat.
+
+**Request Body:**
+```json
+{
+    "sport": "Tennis",
+    "day": "Monday",
+    "startHour": 14,
+    "endHour": 16,
+    "location": "ARC Tennis Courts"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+    "success": true,
+    "data": {
+        "session": {
+            "id": "session-uuid",
+            "matchId": "match-uuid",
+            "proposerId": "user1",
+            "responderId": "user2",
+            "sport": "Tennis",
+            "day": "Monday",
+            "startHour": 14,
+            "endHour": 16,
+            "location": "ARC Tennis Courts",
+            "status": "pending",
+            "createdAt": "2026-02-13T10:00:00.000Z"
+        }
+    }
+}
+```
+
+---
+
+### PUT /matches/:matchId/sessions/:sessionId
+
+Accept or decline a session (responder only).
+
+**Request Body:**
+```json
+{
+    "action": "accept"
+}
+```
+
+---
+
+### GET /matches/:matchId/sessions
+
+List all sessions for a match.
+
+---
+
+### GET /sessions/upcoming
+
+Get all accepted future sessions for the current user.
+
+---
+
+### POST /meetups
+
+Create a new public meetup.
+
+**Request Body:**
+```json
+{
+    "sport": "Basketball",
+    "title": "Pickup Basketball",
+    "description": "Casual game at the ARC",
+    "date": "2026-02-15",
+    "time": "14:00",
+    "location": "ARC Gym",
+    "skillLevels": ["Beginner", "Intermediate"],
+    "playerLimit": 10
+}
+```
+
+**Response (201 Created):**
+```json
+{
+    "success": true,
+    "data": {
+        "meetup": {
+            "id": "meetup-uuid",
+            "hostId": "user1",
+            "hostName": "John Doe",
+            "sport": "Basketball",
+            "title": "Pickup Basketball",
+            "date": "2026-02-15",
+            "time": "14:00",
+            "location": "ARC Gym",
+            "skillLevels": ["Beginner", "Intermediate"],
+            "playerLimit": 10,
+            "participants": ["user1"],
+            "status": "active",
+            "createdAt": "2026-02-13T10:00:00.000Z"
+        }
+    }
+}
+```
+
+---
+
+### GET /meetups
+
+List active meetups. Optional query params: `?sport=Basketball&date=2026-02-15`
+
+---
+
+### GET /meetups/mine
+
+Get meetups the current user has hosted or joined.
+
+---
+
+### POST /meetups/:meetupId/join
+
+Join a meetup. Fails if full or already joined.
+
+---
+
+### POST /meetups/:meetupId/leave
+
+Leave a meetup. Host cannot leave (must cancel instead).
+
+---
+
+### DELETE /meetups/:meetupId
+
+Cancel a meetup (host only).
+
+---
+
 ### GET /health
 
 Health check endpoint.

@@ -5,7 +5,7 @@ import uuid
 
 from db import get_client, Entity
 from config import Config
-from models import user_to_dict
+from models import user_to_dict, expand_availability, session_to_dict
 from middleware import require_auth
 from auth import get_user_by_id
 
@@ -408,7 +408,7 @@ def get_messages(match_id):
     messages = []
     for msg in query.fetch():
         msg_id = msg.key.name or str(msg.key.id)
-        messages.append({
+        msg_dict = {
             'id': msg_id,
             'matchId': msg.get('matchId'),
             'senderId': msg.get('senderId'),
@@ -416,7 +416,12 @@ def get_messages(match_id):
             'createdAt': msg.get('createdAt'),
             'readBy': msg.get('readBy', [msg.get('senderId')]),
             'reactions': reactions_by_message.get(msg_id, [])
-        })
+        }
+        if msg.get('type'):
+            msg_dict['type'] = msg.get('type')
+        if msg.get('metadata'):
+            msg_dict['metadata'] = msg.get('metadata')
+        messages.append(msg_dict)
 
     messages.sort(key=lambda m: m['createdAt'])
 
@@ -488,6 +493,7 @@ def send_message(match_id):
                 'matchId': match_id,
                 'senderId': user_id,
                 'text': text,
+                'type': 'text',
                 'readBy': [user_id],
                 'reactions': [],
                 'createdAt': created_at
@@ -664,4 +670,232 @@ def get_typing(match_id):
     return jsonify({
         'success': True,
         'data': {'partnerIsTyping': partner_is_typing}
+    })
+
+
+# ──────────────────────────────────────────────
+# Sessions (Play Proposals)
+# ──────────────────────────────────────────────
+
+@match_bp.route('/matches/<match_id>/compatible-times', methods=['GET'])
+@require_auth
+def get_compatible_times(match_id):
+    """Compute overlap of both users' expanded availability + shared sports."""
+    user_id = request.user_id
+
+    match, partner_id = get_match_for_user(match_id, user_id)
+    if not match:
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
+
+    user = get_user_by_id(user_id)
+    partner = get_user_by_id(partner_id)
+
+    if not user or not partner:
+        return error_response('USER_NOT_FOUND', 'User not found', 404)
+
+    # Expand availability
+    user_avail = expand_availability(user.get('availability', {}))
+    partner_avail = expand_availability(partner.get('availability', {}))
+
+    # Find overlapping hours per day
+    compatible_times = {}
+    all_days = set(user_avail.keys()) & set(partner_avail.keys())
+    for day in all_days:
+        overlap = sorted(user_avail[day] & partner_avail[day])
+        if overlap:
+            compatible_times[day] = [f'{h}:00' for h in overlap]
+
+    # Find shared sports
+    user_sports = {s.get('sport', '').lower(): s for s in user.get('sports', [])}
+    partner_sports = {s.get('sport', '').lower(): s for s in partner.get('sports', [])}
+
+    shared_sports = []
+    for sport_key in set(user_sports.keys()) & set(partner_sports.keys()):
+        shared_sports.append({
+            'sport': user_sports[sport_key].get('sport'),
+            'userLevel': user_sports[sport_key].get('skillLevel'),
+            'partnerLevel': partner_sports[sport_key].get('skillLevel'),
+        })
+
+    return jsonify({
+        'success': True,
+        'data': {
+            'compatibleTimes': compatible_times,
+            'sharedSports': shared_sports
+        }
+    })
+
+
+@match_bp.route('/matches/<match_id>/sessions', methods=['POST'])
+@require_auth
+def create_session(match_id):
+    """Create a session proposal."""
+    user_id = request.user_id
+
+    match, partner_id = get_match_for_user(match_id, user_id)
+    if not match:
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
+
+    data = request.get_json()
+    sport = data.get('sport')
+    day = data.get('day')
+    start_hour = data.get('startHour')
+    end_hour = data.get('endHour')
+    location = data.get('location', '')
+
+    if not sport or not day or start_hour is None or end_hour is None:
+        return error_response('VALIDATION_ERROR', 'sport, day, startHour, and endHour are required')
+
+    client = get_client()
+    session_id = str(uuid.uuid4())
+    created_at = datetime.utcnow().isoformat() + 'Z'
+
+    session_entity = Entity(client.key('Session', session_id))
+    session_entity.update({
+        'matchId': match_id,
+        'proposerId': user_id,
+        'responderId': partner_id,
+        'sport': sport,
+        'day': day,
+        'startHour': start_hour,
+        'endHour': end_hour,
+        'location': location,
+        'status': 'pending',
+        'createdAt': created_at,
+        'updatedAt': created_at,
+    })
+    client.put(session_entity)
+
+    # Auto-create system message in chat
+    proposer = get_user_by_id(user_id)
+    proposer_name = proposer.get('displayName', 'Someone') if proposer else 'Someone'
+    msg_id = str(uuid.uuid4())
+    msg_entity = Entity(client.key('Message', msg_id))
+    msg_entity.update({
+        'matchId': match_id,
+        'senderId': user_id,
+        'text': f'{proposer_name} proposed a {sport} session on {day} from {start_hour}:00 to {end_hour}:00',
+        'type': 'session_proposal',
+        'metadata': {
+            'sessionId': session_id,
+            'sport': sport,
+            'day': day,
+            'startHour': start_hour,
+            'endHour': end_hour,
+            'location': location,
+        },
+        'readBy': [user_id],
+        'createdAt': created_at,
+    })
+    client.put(msg_entity)
+
+    return jsonify({
+        'success': True,
+        'data': {'session': session_to_dict(session_entity)}
+    })
+
+
+@match_bp.route('/matches/<match_id>/sessions/<session_id>', methods=['PUT'])
+@require_auth
+def update_session(match_id, session_id):
+    """Accept or decline a session (responder only)."""
+    user_id = request.user_id
+
+    match, _ = get_match_for_user(match_id, user_id)
+    if not match:
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
+
+    client = get_client()
+    session_key = client.key('Session', session_id)
+    session = client.get(session_key)
+
+    if not session or session.get('matchId') != match_id:
+        return error_response('SESSION_NOT_FOUND', 'Session not found', 404)
+
+    if session.get('responderId') != user_id:
+        return error_response('NOT_RESPONDER', 'Only the responder can accept/decline', 403)
+
+    if session.get('status') != 'pending':
+        return error_response('SESSION_NOT_PENDING', 'Session is no longer pending')
+
+    data = request.get_json()
+    action = data.get('action')  # "accept" or "decline"
+
+    if action not in ('accept', 'decline'):
+        return error_response('VALIDATION_ERROR', 'action must be "accept" or "decline"')
+
+    now = datetime.utcnow().isoformat() + 'Z'
+    session['status'] = 'accepted' if action == 'accept' else 'declined'
+    session['updatedAt'] = now
+    client.put(session)
+
+    # Auto-create system message
+    responder = get_user_by_id(user_id)
+    responder_name = responder.get('displayName', 'Someone') if responder else 'Someone'
+    verb = 'accepted' if action == 'accept' else 'declined'
+    msg_id = str(uuid.uuid4())
+    msg_entity = Entity(client.key('Message', msg_id))
+    msg_entity.update({
+        'matchId': match_id,
+        'senderId': user_id,
+        'text': f'{responder_name} {verb} the {session.get("sport")} session',
+        'type': 'session_response',
+        'metadata': {
+            'sessionId': session_id,
+            'action': action,
+        },
+        'readBy': [user_id],
+        'createdAt': now,
+    })
+    client.put(msg_entity)
+
+    return jsonify({
+        'success': True,
+        'data': {'session': session_to_dict(session)}
+    })
+
+
+@match_bp.route('/matches/<match_id>/sessions', methods=['GET'])
+@require_auth
+def get_sessions(match_id):
+    """List sessions for a match."""
+    user_id = request.user_id
+
+    match, _ = get_match_for_user(match_id, user_id)
+    if not match:
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
+
+    client = get_client()
+    query = client.query(kind='Session')
+    query.add_filter('matchId', '=', match_id)
+
+    sessions = [session_to_dict(s) for s in query.fetch()]
+    sessions.sort(key=lambda s: s.get('createdAt', ''), reverse=True)
+
+    return jsonify({
+        'success': True,
+        'data': {'sessions': sessions}
+    })
+
+
+@match_bp.route('/sessions/upcoming', methods=['GET'])
+@require_auth
+def get_upcoming_sessions():
+    """Get all accepted sessions for the current user."""
+    user_id = request.user_id
+    client = get_client()
+
+    sessions = []
+    for field in ['proposerId', 'responderId']:
+        query = client.query(kind='Session')
+        query.add_filter(field, '=', user_id)
+        query.add_filter('status', '=', 'accepted')
+        for s in query.fetch():
+            sessions.append(session_to_dict(s))
+
+    sessions.sort(key=lambda s: s.get('createdAt', ''), reverse=True)
+
+    return jsonify({
+        'success': True,
+        'data': {'sessions': sessions}
     })

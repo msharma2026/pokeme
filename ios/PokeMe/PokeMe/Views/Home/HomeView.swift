@@ -32,13 +32,21 @@ struct HomeView: View {
                 }
                 .tag(2)
 
+            MeetupsListView()
+                .environmentObject(authViewModel)
+                .tabItem {
+                    Image(systemName: selectedTab == 3 ? "person.3.fill" : "person.3")
+                    Text("Meetups")
+                }
+                .tag(3)
+
             ProfileView()
                 .environmentObject(authViewModel)
                 .tabItem {
-                    Image(systemName: selectedTab == 3 ? "person.fill" : "person")
+                    Image(systemName: selectedTab == 4 ? "person.fill" : "person")
                     Text("Profile")
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(.orange)
     }
