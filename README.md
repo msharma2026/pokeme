@@ -1,10 +1,10 @@
 # PokeMe
 
-A social iOS app that pairs college students daily for spontaneous connections.
+A sports-based social app that connects college students who want to play sports together. Discover players by sport, poke to connect, chat, propose play sessions, and organize public meetups.
 
 ## Quick Start
 
-### 1. Deploy the Server (if not already deployed)
+### 1. Deploy the Server
 
 ```bash
 cd server
@@ -18,10 +18,12 @@ Server URL: `https://pokeme-191.uw.r.appspot.com`
 ### 2. Build and Run the iOS App
 
 ```bash
-# Open in Xcode
 open ios/PokeMe/PokeMe.xcodeproj
+```
 
-# Or build from command line
+Or from the command line:
+
+```bash
 cd ios/PokeMe
 xcodebuild -scheme PokeMe -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
@@ -29,185 +31,68 @@ xcodebuild -scheme PokeMe -destination 'platform=iOS Simulator,name=iPhone 17' b
 ### 3. Test with Two Simulators
 
 ```bash
-# Boot both simulators
 xcrun simctl boot "iPhone 17"
 xcrun simctl boot "iPhone 17 Pro"
 open -a Simulator
-
-# Install app on both
-xcrun simctl install "iPhone 17" ~/Library/Developer/Xcode/DerivedData/PokeMe-*/Build/Products/Debug-iphonesimulator/PokeMe.app
-xcrun simctl install "iPhone 17 Pro" ~/Library/Developer/Xcode/DerivedData/PokeMe-*/Build/Products/Debug-iphonesimulator/PokeMe.app
-
-# Launch on both
-xcrun simctl launch "iPhone 17" com.pokeme.app
-xcrun simctl launch "iPhone 17 Pro" com.pokeme.app
 ```
 
 ### 4. Login with Test Phone Numbers
 
-On **iPhone 17**:
-- Phone: `+15305550007`
-- Code: `222222`
+| Phone Number    | Code   | Name       |
+|-----------------|--------|------------|
+| +15305550000    | 123456 | User 0000  |
+| +15305550002    | 654321 | User 0002  |
+| +15305550003    | 111111 | User 0003  |
+| +15305550007    | 222222 | User 0007  |
+| +15305550008    | 333333 | User 0008  |
 
-On **iPhone 17 Pro**:
-- Phone: `+15305550008`
-- Code: `333333`
+Error testing numbers: `+15305550001` (invalid phone), `+15305550004` (invalid code).
 
-Both users will automatically be matched together!
+## Features
 
----
+- **Discover**: Browse players filtered by sport (Basketball, Tennis, Soccer, Volleyball, etc.) with skill levels and weekly availability
+- **Poke**: Send a poke to someone you want to play with. Mutual pokes create a match with a private chat
+- **Incoming Pokes**: See who has poked you and poke them back
+- **Chat**: Real-time messaging with reactions, read receipts, and typing indicators
+- **Session Proposals**: Propose play sessions (sport, day, time, location) directly in chat. Partners can accept or decline
+- **Public Meetups**: Create or join open meetups with date, time, location, skill level, and player limits
+- **Availability**: Set your weekly schedule with morning/afternoon/evening blocks or specific hours. The app computes compatible playtimes between matched users
+- **Dark Mode**: System, light, or dark appearance
+- **Notifications**: Local notifications for new pokes, matches, and messages
+- **Settings**: Appearance, notifications, and a reset button for clearing test data
 
 ## Project Structure
 
 ```
 pokeme/
-├── server/          # Python Flask backend (deployed to Google App Engine)
-├── ios/PokeMe/      # SwiftUI iOS application
+├── server/          # Python Flask backend (Google App Engine)
+│   ├── main.py      # App entry point
+│   ├── match.py     # Discovery, pokes, matches, messaging, sessions
+│   ├── meetup.py    # Public meetups
+│   ├── auth.py      # Authentication & profiles
+│   └── phone_auth.py # Phone verification
+├── ios/PokeMe/      # SwiftUI iOS app
+│   └── PokeMe/
+│       ├── App/           # App entry point
+│       ├── Models/        # Data models
+│       ├── Views/         # UI (Discover, Chat, Meetups, Profile, Settings)
+│       ├── ViewModels/    # Business logic
+│       ├── Services/      # API clients
+│       └── Utilities/     # Constants, helpers, notifications
 └── docs/            # Documentation
 ```
 
-## Prerequisites
+## Tech Stack
 
-- **Server**: Python 3.9+, Google Cloud SDK
-- **iOS**: Xcode 15+, macOS
-
-## Test Phone Numbers
-
-For development, use these test phone numbers. Each test phone can only have one active match per day - if you disconnect, use a different test number.
-
-| Phone Number    | Code   | Description        |
-|-----------------|--------|--------------------|
-| +15305550000    | 123456 | Test User 1        |
-| +15305550002    | 654321 | Test User 2        |
-| +15305550003    | 111111 | Test User 3        |
-| +15305550007    | 222222 | Test User 4        |
-| +15305550008    | 333333 | Test User 5        |
-
-**Error Testing:**
-| Phone Number    | Behavior           |
-|-----------------|--------------------|
-| +15305550001    | Invalid phone error|
-| +15305550004    | Invalid code error |
-
-**Note:** If two test users have disconnected from each other, they cannot rematch until the next day (midnight Pacific Time). Use different test phone numbers to create a new match.
-
-## Testing Features
-
-### Testing Daily Matching
-1. Login with two different test phones on two simulators
-2. Both users will be matched automatically
-3. You'll see your match's name and can interact with them
-
-### Testing Poke Feature
-1. Tap the orange "Poke!" button on either simulator
-2. The poke count updates in real-time on both devices (refreshes every 5 seconds)
-
-### Testing Chat
-1. Tap the blue "Chat" button to open messaging
-2. Send messages from either device
-3. Messages sync automatically every 3 seconds
-
-### Testing Profile
-1. Tap the profile icon (top right) > "Profile"
-2. Tap "Edit" to update your profile
-3. You can add:
-   - Profile picture (from photo library)
-   - Display name and major
-   - Bio
-   - Social media links (Instagram, Twitter/X, Snapchat, LinkedIn)
-
-### Testing Disconnect
-1. Tap "Disconnect" to end the current match
-2. You'll see "See you tomorrow!" message
-3. A new match will be available at midnight Pacific Time
-
-## Server Setup
-
-### Local Development
-
-1. Navigate to the server directory:
-   ```bash
-   cd server
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Run locally (requires Google Cloud credentials):
-   ```bash
-   python main.py
-   ```
-   Server runs at `http://localhost:8080`
-
-### Deploy to Google App Engine
-
-1. Authenticate with Google Cloud:
-   ```bash
-   gcloud auth login
-   ```
-
-2. Set your project:
-   ```bash
-   gcloud config set project pokeme-191
-   ```
-
-3. Deploy:
-   ```bash
-   cd server
-   gcloud app deploy
-   ```
-
-   Server URL: `https://pokeme-191.uw.r.appspot.com`
-
-## iOS App Setup
-
-### Build and Run in Xcode
-
-1. Open the project in Xcode:
-   ```bash
-   open ios/PokeMe/PokeMe.xcodeproj
-   ```
-
-2. Select a simulator (iPhone 17 recommended) and press `Cmd+R` to build and run.
-
-### Build from Command Line
-
-1. Build the app:
-   ```bash
-   cd ios/PokeMe
-   xcodebuild -scheme PokeMe -destination 'platform=iOS Simulator,name=iPhone 17' build
-   ```
-
-2. Boot the simulator:
-   ```bash
-   xcrun simctl boot "iPhone 17"
-   open -a Simulator
-   ```
-
-3. Install and launch:
-   ```bash
-   xcrun simctl install booted ~/Library/Developer/Xcode/DerivedData/PokeMe-*/Build/Products/Debug-iphonesimulator/PokeMe.app
-   xcrun simctl launch booted com.pokeme.app
-   ```
-
-### Running Multiple Simulators
-
-1. Boot a second simulator:
-   ```bash
-   xcrun simctl boot "iPhone 17 Pro"
-   ```
-
-2. Install app on second simulator:
-   ```bash
-   xcrun simctl install "iPhone 17 Pro" ~/Library/Developer/Xcode/DerivedData/PokeMe-*/Build/Products/Debug-iphonesimulator/PokeMe.app
-   xcrun simctl launch "iPhone 17 Pro" com.pokeme.app
-   ```
+- **iOS**: SwiftUI
+- **Server**: Python + Flask
+- **Database**: Google Cloud Datastore
+- **Hosting**: Google App Engine
+- **Auth**: JWT tokens
 
 ## API Endpoints
 
-Base URL: `https://pokeme-191.uw.r.appspot.com/api`
+Base URL: `https://pokeme-191.appspot.com/api`
 
 ### Authentication
 | Method | Endpoint              | Description                |
@@ -217,37 +102,73 @@ Base URL: `https://pokeme-191.uw.r.appspot.com/api`
 | POST   | /auth/register        | Register with email        |
 | POST   | /auth/login           | Login with email           |
 | GET    | /auth/me              | Get current user           |
-| PUT    | /auth/profile         | Update user profile        |
+| PUT    | /auth/profile         | Update profile             |
 | POST   | /auth/profile-picture | Upload profile picture     |
 
-### Matching & Messaging
-| Method | Endpoint              | Description                |
-|--------|-----------------------|----------------------------|
-| GET    | /match/today          | Get today's match          |
-| POST   | /match/poke           | Poke your match            |
-| POST   | /match/disconnect     | Disconnect from match      |
-| GET    | /match/messages       | Get messages for match     |
-| POST   | /match/messages       | Send a message             |
+### Discovery & Pokes
+| Method | Endpoint              | Description                      |
+|--------|-----------------------|----------------------------------|
+| GET    | /discover?sport=X     | Browse profiles, filter by sport |
+| POST   | /poke/:userId         | Poke a user (mutual = match)     |
+| GET    | /pokes/incoming       | Get incoming pokes               |
 
-## Features
+### Matches & Messaging
+| Method | Endpoint                                    | Description             |
+|--------|---------------------------------------------|-------------------------|
+| GET    | /matches                                    | Get all matches         |
+| GET    | /matches/:id/messages                       | Get chat messages       |
+| POST   | /matches/:id/messages                       | Send a message          |
+| POST   | /matches/:id/messages/:msgId/reactions      | Add reaction            |
+| DELETE | /matches/:id/messages/:msgId/reactions/:emoji | Remove reaction       |
+| POST   | /matches/:id/messages/read                  | Mark messages as read   |
+| POST   | /matches/:id/typing                         | Update typing status    |
+| GET    | /matches/:id/typing                         | Get typing status       |
 
-- **Phone Authentication**: Login with phone number verification
-- **Daily Pairing**: Get matched with a new person each day at midnight Pacific Time
-- **Poke**: Send pokes to your daily match (real-time updates every 5 seconds)
-- **Chat**: Real-time messaging with your daily match (syncs every 3 seconds)
-- **Disconnect**: Skip current match (new match available tomorrow)
-- **Profile**: Upload profile picture, add bio, and link social media accounts (Instagram, Twitter/X, Snapchat, LinkedIn)
+### Sessions
+| Method | Endpoint                          | Description                    |
+|--------|-----------------------------------|--------------------------------|
+| GET    | /matches/:id/compatible-times     | Get overlapping availability   |
+| POST   | /matches/:id/sessions             | Propose a play session         |
+| PUT    | /matches/:id/sessions/:sessionId  | Accept or decline              |
+| GET    | /matches/:id/sessions             | List sessions for a match      |
+| GET    | /sessions/upcoming                | All accepted upcoming sessions |
 
-## Troubleshooting
+### Meetups
+| Method | Endpoint              | Description                    |
+|--------|-----------------------|--------------------------------|
+| POST   | /meetups              | Create a meetup                |
+| GET    | /meetups?sport=&date= | List meetups (with filters)    |
+| GET    | /meetups/mine         | Get hosted/joined meetups      |
+| POST   | /meetups/:id/join     | Join a meetup                  |
+| POST   | /meetups/:id/leave    | Leave a meetup                 |
+| DELETE | /meetups/:id          | Cancel meetup (host only)      |
 
-### "You're in the pool!" but no match
-- Make sure another test user is also logged in and waiting
-- Refresh by tapping the "Refresh" button
+### Admin
+| Method | Endpoint                    | Description                      |
+|--------|-----------------------------|----------------------------------|
+| POST   | /admin/reset                | Reset all pokes & matches (test) |
+| GET    | /admin/debug-discover?sport=| Debug discover filtering         |
 
-### Messages not syncing
-- Make sure the server is deployed and running
-- Check that both users are on the same match (not disconnected)
+## Server Setup
 
-### Can't rematch after disconnect
-- Disconnected users can't rematch until the next day
-- Use different test phone numbers to create a new match immediately
+### Local Development
+
+```bash
+cd server
+pip install -r requirements.txt
+python main.py
+```
+
+Server runs at `http://localhost:8080`
+
+### Deploy
+
+```bash
+cd server
+gcloud app deploy
+```
+
+## Prerequisites
+
+- **Server**: Python 3.9+, Google Cloud SDK
+- **iOS**: Xcode 16+, macOS
