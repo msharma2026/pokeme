@@ -5,10 +5,12 @@ struct ChatView: View {
     @StateObject private var viewModel = ChatViewModel()
     @Environment(\.dismiss) var dismiss
 
+    let matchId: String
     let partnerName: String
 
     @State private var messageText = ""
     @State private var selectedMessageForReaction: Message?
+    @State private var showProposalSheet = false
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
@@ -19,17 +21,42 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(viewModel.messages) { message in
-                                MessageBubble(
-                                    message: message,
-                                    currentUserId: authViewModel.user?.id ?? "",
-                                    onReactionTap: {
-                                        selectedMessageForReaction = message
-                                    }
-                                )
-                                .id(message.id)
+                                if message.isSessionProposal || message.isSessionResponse {
+                                    SessionProposalBubble(
+                                        message: message,
+                                        currentUserId: authViewModel.user?.id ?? "",
+                                        onAccept: { sessionId in
+                                            Task {
+                                                await viewModel.respondToSession(
+                                                    token: authViewModel.getToken(),
+                                                    sessionId: sessionId,
+                                                    action: "accept"
+                                                )
+                                            }
+                                        },
+                                        onDecline: { sessionId in
+                                            Task {
+                                                await viewModel.respondToSession(
+                                                    token: authViewModel.getToken(),
+                                                    sessionId: sessionId,
+                                                    action: "decline"
+                                                )
+                                            }
+                                        }
+                                    )
+                                    .id(message.id)
+                                } else {
+                                    MessageBubble(
+                                        message: message,
+                                        currentUserId: authViewModel.user?.id ?? "",
+                                        onReactionTap: {
+                                            selectedMessageForReaction = message
+                                        }
+                                    )
+                                    .id(message.id)
+                                }
                             }
 
-                            // Typing indicator
                             if viewModel.partnerIsTyping {
                                 TypingIndicatorView()
                                     .id("typing-indicator")
@@ -50,7 +77,10 @@ struct ChatView: View {
                 // Input bar
                 HStack(spacing: 12) {
                     TextField("Message...", text: $messageText)
-                        .textFieldStyle(.roundedBorder)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(20)
                         .focused($isInputFocused)
                         .onChange(of: messageText) { newValue in
                             if !newValue.isEmpty {
@@ -61,29 +91,55 @@ struct ChatView: View {
                     Button(action: sendMessage) {
                         if viewModel.isSending {
                             ProgressView()
-                                .frame(width: 32, height: 32)
+                                .tint(.orange)
+                                .frame(width: 36, height: 36)
                         } else {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(messageText.isEmpty ? .gray : .blue)
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        messageText.isEmpty
+                                            ? LinearGradient(colors: [Color(.systemGray4), Color(.systemGray4)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                            : LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "arrow.up")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
                         }
                     }
                     .disabled(messageText.isEmpty || viewModel.isSending)
                 }
-                .padding()
-                .background(Color(.systemBackground))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial)
             }
             .navigationTitle(partnerName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.down")
+                            Text("Close")
+                        }
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.orange)
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showProposalSheet = true }) {
+                        Image(systemName: "calendar.badge.plus")
+                            .foregroundColor(.orange)
                     }
                 }
             }
             .onAppear {
-                viewModel.setCurrentUser(id: authViewModel.user?.id ?? "")
+                viewModel.configure(
+                    currentUserId: authViewModel.user?.id ?? "",
+                    matchId: matchId
+                )
                 Task {
                     await viewModel.fetchMessages(token: authViewModel.getToken())
                 }
@@ -94,6 +150,17 @@ struct ChatView: View {
                 Task {
                     await viewModel.stopTyping(token: authViewModel.getToken())
                 }
+            }
+            .sheet(isPresented: $showProposalSheet) {
+                ProposalSheet(
+                    matchId: matchId,
+                    token: authViewModel.getToken(),
+                    onProposed: {
+                        Task {
+                            await viewModel.fetchMessages(token: authViewModel.getToken())
+                        }
+                    }
+                )
             }
             .sheet(item: $selectedMessageForReaction) { message in
                 ReactionPickerSheet(
@@ -147,28 +214,28 @@ struct TypingIndicatorView: View {
     let timer = Timer.publish(every: 0.3, on: .main, in: .common).autoconnect()
     @State private var currentDot = 0
 
+    private let dotColors: [Color] = [.orange, .pink, .purple]
+
     var body: some View {
         HStack {
             HStack(spacing: 6) {
                 ForEach(0..<3, id: \.self) { index in
                     Circle()
-                        .fill(Color(.systemGray))
+                        .fill(dotColors[index].opacity(0.7))
                         .frame(width: 10, height: 10)
                         .scaleEffect(dotScales[index])
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color(.systemGray5))
+            .background(Color(.systemGray6))
             .cornerRadius(20)
 
             Spacer()
         }
         .onReceive(timer) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {
-                // Reset previous dot
                 dotScales[(currentDot + 2) % 3] = 1.0
-                // Animate current dot
                 dotScales[currentDot] = 1.4
                 currentDot = (currentDot + 1) % 3
             }
@@ -188,6 +255,9 @@ struct ReactionPickerSheet: View {
         VStack(spacing: 16) {
             Text("React to message")
                 .font(.headline)
+                .foregroundStyle(
+                    .linearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                )
                 .padding(.top)
 
             HStack(spacing: 16) {
@@ -200,11 +270,13 @@ struct ReactionPickerSheet: View {
                             .padding(8)
                             .background(
                                 hasUserReacted(with: emoji)
-                                    ? Color.blue.opacity(0.3)
-                                    : Color(.systemGray6)
+                                    ? LinearGradient(colors: [.orange.opacity(0.3), .pink.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    : LinearGradient(colors: [Color(.systemGray6), Color(.systemGray6)], startPoint: .topLeading, endPoint: .bottomTrailing)
                             )
                             .cornerRadius(12)
                     }
+                    .scaleEffect(hasUserReacted(with: emoji) ? 1.15 : 1.0)
+                    .animation(.spring(response: 0.3), value: hasUserReacted(with: emoji))
                 }
             }
 
@@ -223,7 +295,7 @@ struct ReactionPickerSheet: View {
     }
 }
 
-// MARK: - Reaction Bubble (iMessage style)
+// MARK: - Reaction Bubble
 
 struct ReactionBubble: View {
     let reactions: [Reaction]
@@ -274,6 +346,7 @@ struct MessageBubble: View {
     let message: Message
     let currentUserId: String
     var onReactionTap: (() -> Void)?
+    @State private var appeared = false
 
     private var hasReactions: Bool {
         guard let reactions = message.reactions else { return false }
@@ -287,23 +360,24 @@ struct MessageBubble: View {
             }
 
             VStack(alignment: message.isFromCurrentUser ? .trailing : .leading, spacing: 0) {
-                // Message bubble with reaction overlay
                 ZStack(alignment: message.isFromCurrentUser ? .bottomLeading : .bottomTrailing) {
                     Text(message.text)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(message.isFromCurrentUser ? Color.blue : Color(.systemGray5))
+                        .background(
+                            message.isFromCurrentUser
+                                ? LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                : LinearGradient(colors: [Color(.systemGray6), Color(.systemGray6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
                         .foregroundColor(message.isFromCurrentUser ? .white : .primary)
                         .cornerRadius(18)
                         .onTapGesture(count: 2) {
-                            // Double tap to quick-react with thumbs up
                             onReactionTap?()
                         }
                         .onLongPressGesture {
                             onReactionTap?()
                         }
 
-                    // Reaction bubble overlay (iMessage style - on corner)
                     if hasReactions {
                         ReactionBubble(
                             reactions: message.reactions ?? [],
@@ -317,18 +391,18 @@ struct MessageBubble: View {
                 }
                 .padding(.bottom, hasReactions ? 14 : 0)
 
-                // Time and read receipt
                 HStack(spacing: 4) {
                     Text(formatTime(message.createdAt))
                         .font(.caption2)
                         .foregroundColor(.secondary)
 
-                    // Read receipt for sent messages (iMessage style)
                     if message.isFromCurrentUser {
                         if message.isReadByPartner(currentUserId: currentUserId) {
                             Text("Read")
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.blue)
+                                .foregroundStyle(
+                                    .linearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                                )
                         } else {
                             Text("Delivered")
                                 .font(.system(size: 10, weight: .medium))
@@ -338,9 +412,16 @@ struct MessageBubble: View {
                 }
                 .padding(.top, 2)
             }
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared ? 0 : 10)
 
             if !message.isFromCurrentUser {
                 Spacer(minLength: 60)
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                appeared = true
             }
         }
     }
@@ -355,7 +436,6 @@ struct MessageBubble: View {
             return displayFormatter.string(from: date)
         }
 
-        // Try without fractional seconds
         formatter.formatOptions = [.withInternetDateTime]
         if let date = formatter.date(from: isoString) {
             let displayFormatter = DateFormatter()
@@ -365,9 +445,4 @@ struct MessageBubble: View {
 
         return ""
     }
-}
-
-#Preview {
-    ChatView(partnerName: "Jane Doe")
-        .environmentObject(AuthViewModel())
 }

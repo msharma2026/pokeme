@@ -2,29 +2,49 @@ import Foundation
 
 struct Match: Codable, Identifiable {
     let id: String
-    let date: String
     let partnerId: String
     let partnerName: String
-    let partnerMajor: String?
+    let partnerSports: [SportEntry]?
+    let partnerCollegeYear: String?
+    let partnerProfilePicture: String?
     let status: String
-    let myPokes: Int
-    let partnerPokes: Int
+    let lastMessage: LastMessage?
     let createdAt: String
 }
 
-struct MatchResponse: Codable {
-    let match: Match?
-    let status: String
-    let message: String?
-    let nextMatchAt: String?
+struct LastMessage: Codable {
+    let text: String
+    let senderId: String
+    let createdAt: String
 }
 
-struct DisconnectResponse: Codable {
-    let message: String
-    let nextMatchAt: String
+struct MatchesListResponse: Codable {
+    let matches: [Match]
 }
 
 struct PokeResponse: Codable {
-    let match: Match
+    let status: String
     let message: String
+    let match: Match?
+}
+
+struct DiscoverResponse: Codable {
+    let profiles: [User]
+}
+
+struct IncomingPoke: Codable, Identifiable {
+    let id: String
+    let fromUserId: String
+    let createdAt: String
+    let fromUser: User
+}
+
+struct IncomingPokesResponse: Codable {
+    let pokes: [IncomingPoke]
+    let count: Int
+}
+
+struct ResetResponse: Codable {
+    let deletedPokes: Int
+    let deletedMatches: Int
 }

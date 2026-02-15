@@ -210,6 +210,12 @@ def update_profile():
         user['bio'] = data['bio']
     if 'socials' in data:
         user['socials'] = data['socials']
+    if 'sports' in data:
+        user['sports'] = data['sports']
+    if 'collegeYear' in data:
+        user['collegeYear'] = data['collegeYear']
+    if 'availability' in data:
+        user['availability'] = data['availability']
 
     user['updatedAt'] = datetime.utcnow().isoformat() + 'Z'
 
@@ -253,6 +259,11 @@ def upload_profile_picture():
     # In production, you'd upload to Cloud Storage and store the URL
     user['profilePicture'] = image_data
     user['updatedAt'] = datetime.utcnow().isoformat() + 'Z'
+
+    # Exclude large fields from indexes (Datastore has 1500 byte index limit)
+    efi = set(user.exclude_from_indexes)
+    efi.add('profilePicture')
+    user.exclude_from_indexes = efi
 
     client = get_client()
     client.put(user)

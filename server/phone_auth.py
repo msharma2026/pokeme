@@ -60,7 +60,7 @@ def get_or_create_user_by_phone(phone):
     user_id = str(uuid.uuid4())
     key = client.key('User', user_id)
 
-    entity = Entity(key)
+    entity = Entity(key, exclude_from_indexes=['profilePicture', 'bio'])
     entity.update({
         'phone': phone,
         'email': None,

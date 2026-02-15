@@ -19,12 +19,13 @@ The PokeMe backend is built with Python and Flask, deployed on Google App Engine
 
 ```
 server/
-├── main.py               # Flask app entry point
+├── main.py               # Flask app entry point, blueprint registration
 ├── config.py             # Configuration settings
 ├── db.py                 # Datastore client
 ├── auth.py               # Authentication routes & logic
-├── match.py              # Matching routes & algorithm
-├── models.py             # Data model helpers
+├── match.py              # Discovery, pokes, matches, messages, sessions
+├── meetup.py             # Public meetups blueprint
+├── models.py             # Entity helpers (user_to_dict, session_to_dict, meetup_to_dict, expand_availability)
 ├── middleware.py         # JWT auth middleware
 ├── requirements.txt      # Python dependencies
 ├── app.yaml              # App Engine configuration
@@ -112,6 +113,44 @@ Key format: `{matchId}_{userId}`
 }
 ```
 
+#### Session
+Play session proposals between matched users.
+```python
+{
+    'matchId': str,         # ID of the match
+    'proposerId': str,      # User who proposed
+    'responderId': str,     # User who should accept/decline
+    'sport': str,           # Sport name
+    'day': str,             # Day of week
+    'startHour': int,       # Start hour (0-23)
+    'endHour': int,         # End hour (0-23)
+    'location': str,        # Optional location
+    'status': str,          # "pending", "accepted", "declined"
+    'createdAt': str,
+    'updatedAt': str
+}
+```
+
+#### Meetup
+Public meetup listings.
+```python
+{
+    'hostId': str,          # Creator user ID
+    'hostName': str,        # Creator display name
+    'sport': str,           # Sport name
+    'title': str,           # Meetup title
+    'description': str,     # Optional description
+    'date': str,            # "YYYY-MM-DD"
+    'time': str,            # "HH:MM"
+    'location': str,        # Optional location
+    'skillLevels': list,    # e.g. ["Beginner", "Intermediate"]
+    'playerLimit': int,     # Max participants
+    'participants': list,   # List of user IDs
+    'status': str,          # "active", "cancelled"
+    'createdAt': str
+}
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -141,6 +180,27 @@ Key format: `{matchId}_{userId}`
 | POST | /api/match/messages/read | Mark messages as read | Yes |
 | POST | /api/match/typing | Update typing status | Yes |
 | GET | /api/match/typing | Get partner's typing status | Yes |
+
+### Sessions
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | /api/matches/:id/compatible-times | Get overlapping availability & shared sports | Yes |
+| POST | /api/matches/:id/sessions | Create session proposal | Yes |
+| PUT | /api/matches/:id/sessions/:sid | Accept/decline session | Yes |
+| GET | /api/matches/:id/sessions | List sessions for match | Yes |
+| GET | /api/sessions/upcoming | Accepted sessions for user | Yes |
+
+### Meetups
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | /api/meetups | Create meetup | Yes |
+| GET | /api/meetups | List meetups (optional ?sport=, ?date=) | Yes |
+| GET | /api/meetups/mine | User's hosted/joined meetups | Yes |
+| POST | /api/meetups/:id/join | Join meetup | Yes |
+| POST | /api/meetups/:id/leave | Leave meetup | Yes |
+| DELETE | /api/meetups/:id | Cancel meetup (host only) | Yes |
 
 ### Utility
 

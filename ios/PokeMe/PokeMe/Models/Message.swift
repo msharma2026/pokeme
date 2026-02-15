@@ -8,6 +8,16 @@ struct Reaction: Codable, Identifiable {
     var id: String { "\(userId)_\(emoji)" }
 }
 
+struct MessageMetadata: Codable {
+    let sessionId: String?
+    let sport: String?
+    let day: String?
+    let startHour: Int?
+    let endHour: Int?
+    let location: String?
+    let action: String?
+}
+
 struct Message: Codable, Identifiable {
     let id: String
     let matchId: String
@@ -16,8 +26,13 @@ struct Message: Codable, Identifiable {
     let createdAt: String
     var readBy: [String]?
     var reactions: [Reaction]?
+    var type: String?       // "text", "session_proposal", "session_response"
+    var metadata: MessageMetadata?
 
     var isFromCurrentUser: Bool = false
+
+    var isSessionProposal: Bool { type == "session_proposal" }
+    var isSessionResponse: Bool { type == "session_response" }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -27,6 +42,8 @@ struct Message: Codable, Identifiable {
         case createdAt
         case readBy
         case reactions
+        case type
+        case metadata
     }
 
     /// Check if this message has been read by the partner (someone other than the sender)

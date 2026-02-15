@@ -12,7 +12,10 @@ class ProfileViewModel: ObservableObject {
         displayName: String,
         major: String?,
         bio: String?,
-        socials: Socials?
+        socials: Socials?,
+        sports: [SportEntry]?,
+        collegeYear: String?,
+        availability: [String: [String]]?
     ) async -> User? {
         guard let token = token else {
             errorMessage = "Not authenticated"
@@ -27,7 +30,10 @@ class ProfileViewModel: ObservableObject {
                 displayName: displayName,
                 major: major,
                 bio: bio,
-                socials: socials
+                socials: socials,
+                sports: sports,
+                collegeYear: collegeYear,
+                availability: availability
             )
             let user = try await ProfileService.shared.updateProfile(token: token, update: update)
             successMessage = "Profile updated!"
