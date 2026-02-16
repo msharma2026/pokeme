@@ -66,6 +66,34 @@ struct DiscoverCardView: View {
             }
 
             VStack(spacing: 14) {
+                if let score = user.recommendationScore {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .foregroundColor(.orange)
+                            Text("AI Match \(Int(score.rounded()))%")
+                                .font(.subheadline)
+                                .fontWeight(.bold)
+                        }
+
+                        if let topReason = user.recommendationReasons?.first, !topReason.isEmpty {
+                            Text(topReason)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.orange.opacity(0.14), Color.pink.opacity(0.12)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(12)
+                }
+
                 // Sports with colorful badges
                 if let sports = user.sports, !sports.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {

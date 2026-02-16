@@ -8,6 +8,7 @@ from config import Config
 from models import user_to_dict, expand_availability, session_to_dict
 from middleware import require_auth
 from auth import get_user_by_id
+from recommendation import rank_discover_candidates
 
 match_bp = Blueprint('match', __name__)
 
@@ -46,7 +47,7 @@ def get_match_for_user(match_id, user_id):
 @match_bp.route('/discover', methods=['GET'])
 @require_auth
 def discover():
-    """Get profiles to browse, optionally filtered by sport."""
+    """Get profiles to browse, optionally filtered by sport and AI-ranked by compatibility."""
     user_id = request.user_id
     sport_filter = request.args.get('sport')
 
@@ -76,7 +77,7 @@ def discover():
     # Fetch all users and filter
     all_users = list(client.query(kind='User').fetch())
 
-    profiles = []
+    candidate_entities = []
     for u in all_users:
         uid = u.key.name or str(u.key.id)
         if uid in exclude_ids:
@@ -89,11 +90,24 @@ def discover():
             if sport_filter.lower() not in sport_names:
                 continue
 
-        profiles.append(user_to_dict(u))
+        candidate_entities.append(u)
+
+    ranked_candidates = rank_discover_candidates(user, candidate_entities)
+
+    profiles = []
+    for ranked in ranked_candidates:
+        profile = user_to_dict(ranked['candidate'])
+        profile['recommendationScore'] = ranked['recommendation']['score']
+        profile['recommendationReasons'] = ranked['recommendation']['reasons']
+        profile['recommendationBreakdown'] = ranked['recommendation']['breakdown']
+        profiles.append(profile)
 
     return jsonify({
         'success': True,
-        'data': {'profiles': profiles}
+        'data': {
+            'profiles': profiles,
+            'rankingModel': 'profile-compatibility-v1'
+        }
     })
 
 

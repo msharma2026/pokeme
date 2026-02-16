@@ -33,11 +33,16 @@ struct User: Codable, Identifiable {
     var sports: [SportEntry]?
     var collegeYear: String?
     var availability: [String: [String]]?
+    var recommendationScore: Double?
+    var recommendationReasons: [String]?
+    var recommendationBreakdown: [String: Double]?
     let createdAt: String
 
     enum CodingKeys: String, CodingKey {
         case id, email, phone, displayName, major, bio
-        case profilePicture, socials, sports, collegeYear, availability, createdAt
+        case profilePicture, socials, sports, collegeYear, availability
+        case recommendationScore, recommendationReasons, recommendationBreakdown
+        case createdAt
     }
 }
 

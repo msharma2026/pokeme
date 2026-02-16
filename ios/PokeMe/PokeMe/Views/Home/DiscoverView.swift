@@ -24,7 +24,7 @@ struct DiscoverView: View {
                         HStack(spacing: 8) {
                             FilterChip(label: "All", emoji: "🔥", isSelected: viewModel.selectedSport == nil) {
                                 viewModel.selectedSport = nil
-                                Task { await viewModel.fetchProfiles(token: authViewModel.getToken()) }
+                                Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
                             }
 
                             ForEach(Sport.allCases, id: \.self) { sport in
@@ -34,7 +34,7 @@ struct DiscoverView: View {
                                     isSelected: viewModel.selectedSport == sport.rawValue
                                 ) {
                                     viewModel.selectedSport = sport.rawValue
-                                    Task { await viewModel.fetchProfiles(token: authViewModel.getToken()) }
+                                    Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
                                 }
                             }
                         }
@@ -53,7 +53,7 @@ struct DiscoverView: View {
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                             Button("Retry") {
-                                Task { await viewModel.fetchProfiles(token: authViewModel.getToken()) }
+                                Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
                             }
                             .padding(.horizontal, 24)
                             .padding(.vertical, 10)
@@ -146,7 +146,7 @@ struct DiscoverView: View {
                                 .foregroundColor(.secondary)
 
                             Button(action: {
-                                Task { await viewModel.fetchProfiles(token: authViewModel.getToken()) }
+                                Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
                             }) {
                                 HStack {
                                     Image(systemName: "arrow.clockwise")
@@ -169,7 +169,12 @@ struct DiscoverView: View {
             }
             .navigationTitle("Discover")
             .task {
-                await viewModel.fetchProfiles(token: authViewModel.getToken())
+                await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
+            }
+            .onChange(of: authViewModel.user?.id) { _ in
+                Task {
+                    await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
+                }
             }
             .alert("It's a Match! 🎉", isPresented: $viewModel.showMatchAlert) {
                 Button("Start Chatting!") {}
