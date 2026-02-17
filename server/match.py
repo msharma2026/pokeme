@@ -106,7 +106,7 @@ def discover():
         'success': True,
         'data': {
             'profiles': profiles,
-            'rankingModel': 'profile-compatibility-v1'
+            'rankingModel': 'claude-ai-v1'
         }
     })
 

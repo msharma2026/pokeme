@@ -8,3 +8,4 @@ class Config:
     JWT_EXPIRATION_DAYS = 7
     INITIAL_SOCIAL_POINTS = 100
     TIMEZONE = 'America/Los_Angeles'  # Pacific Time for UC Davis
+    ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
