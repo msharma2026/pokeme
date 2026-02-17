@@ -18,15 +18,16 @@ I then told her about our app idea and she pointed out that we should implement 
 
 # David
 1st interview:
-I talked to a transfer student who told me it has been hard to make friends since moving to Davis
-He said he wants to play basketball more often but usually has no one consistent to text and meet at the ARC
-I asked what makes it hard and he said people already come in groups and he feels awkward asking to join
-He said he tried group chats before but most plans die out because no one confirms a time
-I pitched our app idea and he said matching by sport and availability would help him a lot, especially if it can create repeat games with the same people
+I talked to a student who likes attending random social events.
+He said it is difficult to get into playing sports, because their friends often have schedule conflicts and sometimes do not want to commit to an activity.
+They say because of this, they oftentimes just opt not to play, and do other activities with more people instead of pursuing what they may have wanted to explore.
+A solution they try to do to resolve this is try to schedule dates far in advance to play, but they say this is inconvenient because he wants to play sooner rather than later.
+After speaking about our app idea, they thought it was a decent solution, but he would feel uncomfortable playing with strangers.
+He suggested emphasizing user profiles to make it easier to play with new people and potentially make new friends.
 
 2nd interview:
-I talked to a student who works part time and has an inconsistent class schedule
-She said she likes volleyball and pickleball but cannot commit to intramurals because her free times change every week
-When I asked what she needs she said she wants quick same-day or next-day match options with people near her skill level
-She also said safety and comfort matter, and she would rather join a small group first than meet one stranger one on one
-After hearing the app concept she said a feature to join open groups and see how active they are would make her use it
+I talked to a student who likes to play soccer and other sports.
+He said while he normally doesn't have an issue finding friends to play sports with, that on some days when friends are out due to holidays or in general, that he feels very bored and wishes that he could join quick matches.
+I asked what were some solutions he had for this matter. He said that he joins social media platforms (i.e. Discord, Insta groups, etc) and clubs, and tries to arrange games that way.
+They told me this solution was not consistently effective.
+After introducing our app idea, he said it would be something he would be willing to try, but he voiced concerns about the amount of people on the app. They suggested maybe trying some way to make an integration with another social media app.
