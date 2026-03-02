@@ -3,11 +3,15 @@ import random
 import string
 from datetime import datetime, timedelta
 import uuid
+import requests as http_requests
 
 from db import get_client, Entity
 from config import Config
 from models import user_to_dict
 from auth import generate_token, get_user_by_id
+
+ECS191_SMS_BASE = "https://ecs191-sms-authentication.uc.r.appspot.com"
+ECS191_APP_ID = "pokeme"
 
 phone_auth_bp = Blueprint('phone_auth', __name__)
 
@@ -158,16 +162,30 @@ def send_code():
             }
         })
 
-    # For real phone numbers, we would use Twilio here
-    # For now, just generate and store a code (would send via Twilio in production)
-    code = generate_code()
-    store_verification_code(phone, code)
+    # Real phone: delegate SMS delivery to ECS191 SMS Auth API
+    try:
+        resp = http_requests.post(
+            f"{ECS191_SMS_BASE}/v1/send_sms_code",
+            json={"phone_number": phone, "app_id": ECS191_APP_ID},
+            timeout=10
+        )
+    except http_requests.RequestException:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'SERVICE_UNAVAILABLE',
+                'message': 'Verification service unavailable'
+            }
+        }), 503
 
-    # TODO: Integrate actual Twilio SMS sending
-    # In production:
-    # from twilio.rest import Client
-    # client = Client(account_sid, auth_token)
-    # client.messages.create(body=f"Your PokeMe code: {code}", from_=TWILIO_NUMBER, to=phone)
+    if not resp.ok:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'SERVICE_ERROR',
+                'message': 'Failed to send verification code'
+            }
+        }), 500
 
     return jsonify({
         'success': True,
@@ -242,10 +260,23 @@ def verify_code():
                 }
             })
 
-    # For real phone numbers
-    stored = get_verification_code(phone)
+    # Real phone: delegate verification to ECS191 SMS Auth API
+    try:
+        resp = http_requests.post(
+            f"{ECS191_SMS_BASE}/v1/verify_code",
+            json={"phone_number": phone, "app_id": ECS191_APP_ID, "code": code},
+            timeout=10
+        )
+    except http_requests.RequestException:
+        return jsonify({
+            'success': False,
+            'error': {
+                'code': 'SERVICE_UNAVAILABLE',
+                'message': 'Verification service unavailable'
+            }
+        }), 503
 
-    if not stored:
+    if resp.status_code == 401:
         return jsonify({
             'success': False,
             'error': {
@@ -254,47 +285,16 @@ def verify_code():
             }
         }), 401
 
-    # Check expiration
-    expires_at = datetime.fromisoformat(stored['expiresAt'].replace('Z', '+00:00'))
-    if datetime.now(expires_at.tzinfo) > expires_at:
-        delete_verification_code(phone)
+    if not resp.ok:
         return jsonify({
             'success': False,
             'error': {
-                'code': 'INVALID_CODE',
-                'message': 'Invalid or expired code'
+                'code': 'SERVICE_ERROR',
+                'message': 'Verification failed'
             }
-        }), 401
+        }), 500
 
-    # Check code
-    if stored['code'] != code:
-        # Increment attempts
-        client = get_client()
-        stored['attempts'] = stored.get('attempts', 0) + 1
-
-        if stored['attempts'] >= 5:
-            delete_verification_code(phone)
-            return jsonify({
-                'success': False,
-                'error': {
-                    'code': 'MAX_ATTEMPTS',
-                    'message': 'Too many failed attempts. Please request a new code.'
-                }
-            }), 401
-
-        client.put(stored)
-
-        return jsonify({
-            'success': False,
-            'error': {
-                'code': 'INVALID_CODE',
-                'message': 'Invalid or expired code'
-            }
-        }), 401
-
-    # Success - delete code and authenticate
-    delete_verification_code(phone)
-
+    # ECS191 confirmed the code — create/retrieve PokeMe user and issue our own JWT
     user = get_or_create_user_by_phone(phone)
     user_id = user.key.name or str(user.key.id)
     token = generate_token(user_id)

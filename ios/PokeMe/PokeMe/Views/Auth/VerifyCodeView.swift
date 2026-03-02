@@ -69,12 +69,6 @@ struct VerifyCodeView: View {
                             )
                             .offset(x: shakeOffset)
 
-                        if phone == "+15305550000" {
-                            Text("Test code: 123456")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
                         if let error = errorMessage {
                             HStack {
                                 Image(systemName: "exclamationmark.circle.fill")
