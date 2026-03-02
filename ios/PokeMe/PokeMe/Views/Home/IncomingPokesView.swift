@@ -51,6 +51,27 @@ struct IncomingPokesView: View {
                         Text("When someone pokes you, they'll show up here!")
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+
+                        // CTA: nudge user to discover players
+                        Button(action: {
+                            NotificationCenter.default.post(name: NSNotification.Name("SwitchToDiscover"), object: nil)
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sportscourt.fill")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text("Go to Discover")
+                                    .fontWeight(.semibold)
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                            )
+                            .foregroundColor(.white)
+                            .cornerRadius(25)
+                            .shadow(color: .orange.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
                     }
                     .padding()
                     .onAppear { animateEmpty = true }

@@ -30,92 +30,7 @@ struct DiscoverView: View {
                 }
                 .padding(.vertical, 8)
 
-                if let error = viewModel.errorMessage {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 40))
-                            .foregroundStyle(.linearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom))
-                        Text(error)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                        Button("Retry") {
-                            Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 10)
-                        .background(Color.orange)
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                    }
-                    Spacer()
-                } else if viewModel.isLoading {
-                    Spacer()
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                            .tint(.orange)
-                        Text("Finding players...")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                } else if viewModel.profiles.isEmpty {
-                    Spacer()
-                    VStack(spacing: 16) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(colors: [.orange.opacity(0.2), .purple.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                )
-                                .frame(width: 120, height: 120)
-                            Image(systemName: "sportscourt.fill")
-                                .font(.system(size: 50))
-                                .foregroundStyle(.linearGradient(colors: [.orange, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        }
-                        Text("No more profiles")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        Text("Check back later for new players!")
-                            .foregroundColor(.secondary)
-                        Button(action: {
-                            Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
-                        }) {
-                            HStack {
-                                Image(systemName: "arrow.clockwise")
-                                Text("Refresh")
-                                    .fontWeight(.semibold)
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(
-                                LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
-                            )
-                            .foregroundColor(.white)
-                            .cornerRadius(25)
-                            .shadow(color: .orange.opacity(0.3), radius: 8, x: 0, y: 4)
-                        }
-                    }
-                    Spacer()
-                } else {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: 0) {
-                            ForEach(viewModel.profiles) { profile in
-                                DiscoverCardView(
-                                    user: profile,
-                                    isPoked: viewModel.pokedIds.contains(profile.id),
-                                    onPoke: {
-                                        Task { await viewModel.pokeProfile(token: authViewModel.getToken(), user: profile) }
-                                    }
-                                )
-                                .containerRelativeFrame(.vertical)
-                            }
-                        }
-                        .scrollTargetLayout()
-                    }
-                    .scrollTargetBehavior(.paging)
-                }
+                stateContent
             }
             .navigationTitle("Discover")
             .task {
@@ -134,6 +49,119 @@ struct DiscoverView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var stateContent: some View {
+        if let error = viewModel.errorMessage {
+            errorView(error)
+        } else if viewModel.isLoading {
+            loadingView
+        } else if viewModel.profiles.isEmpty {
+            emptyView
+        } else {
+            profilesView
+        }
+    }
+
+    private func errorView(_ error: String) -> some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(.linearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom))
+            Text(error)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Button("Retry") {
+                Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
+            .background(Color.orange)
+            .foregroundColor(.white)
+            .cornerRadius(20)
+            Spacer()
+        }
+    }
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            ProgressView()
+                .scaleEffect(1.5)
+                .tint(.orange)
+            Text("Finding players...")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+    }
+
+    private var emptyView: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(colors: [.orange.opacity(0.2), .purple.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .frame(width: 120, height: 120)
+                Image(systemName: "sportscourt.fill")
+                    .font(.system(size: 50))
+                    .foregroundStyle(.linearGradient(colors: [.orange, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+            }
+            Text("No more profiles")
+                .font(.title2)
+                .fontWeight(.bold)
+            Text("Check back later for new players!")
+                .foregroundColor(.secondary)
+            // Primary CTA
+            Button(action: {
+                Task { await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user) }
+            }) {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Refresh").fontWeight(.semibold)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing))
+                .foregroundColor(.white)
+                .cornerRadius(25)
+                .shadow(color: .orange.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+            // Secondary CTA
+            Button(action: {
+                NotificationCenter.default.post(name: NSNotification.Name("SwitchToProfile"), object: nil)
+            }) {
+                Text("Complete profile for better matches")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .underline()
+            }
+            Spacer()
+        }
+    }
+
+    private var profilesView: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: 0) {
+                ForEach(viewModel.profiles) { profile in
+                    DiscoverCardView(
+                        user: profile,
+                        isPoked: viewModel.pokedIds.contains(profile.id),
+                        onPoke: {
+                            Task { await viewModel.pokeProfile(token: authViewModel.getToken(), user: profile) }
+                        }
+                    )
+                    .containerRelativeFrame(.vertical)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.paging)
     }
 
     private func sportEmoji(_ sport: String) -> String {

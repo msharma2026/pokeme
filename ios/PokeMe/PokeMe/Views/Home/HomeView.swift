@@ -5,7 +5,15 @@ struct HomeView: View {
     @StateObject private var pokesViewModel = PokesViewModel()
     @StateObject private var matchViewModel = MatchViewModel()
     @StateObject private var messageNotificationPoller = MessageNotificationPoller()
-    @State private var selectedTab = 0
+    @State private var selectedTab = 1  // default to Discover
+
+    /// Matches where partner sent the last message — proxy for unread chats
+    private var unreadMatchCount: Int {
+        let userId = authViewModel.user?.id ?? ""
+        return matchViewModel.matches.filter {
+            $0.lastMessage != nil && $0.lastMessage?.senderId != userId
+        }.count
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -41,6 +49,7 @@ struct HomeView: View {
                     Text("Matches")
                 }
                 .tag(3)
+                .badge(unreadMatchCount > 0 ? unreadMatchCount : 0)
 
             ProfileView()
                 .environmentObject(authViewModel)
@@ -60,6 +69,13 @@ struct HomeView: View {
         .onDisappear {
             matchViewModel.stopPolling()
             messageNotificationPoller.stopPolling()
+        }
+        // Handle tab-switch notifications from empty state CTAs
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToDiscover"))) { _ in
+            selectedTab = 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToProfile"))) { _ in
+            selectedTab = 4
         }
     }
 }
