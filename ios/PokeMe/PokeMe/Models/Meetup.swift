@@ -42,3 +42,24 @@ struct CreateMeetupRequest: Codable {
 struct MeetupDeleteResponse: Codable {
     let message: String
 }
+
+struct MeetupParticipantsResponse: Codable {
+    let participants: [User]
+}
+
+struct MeetupMessage: Codable, Identifiable {
+    var id: String
+    var meetupId: String
+    var senderId: String
+    var senderName: String
+    var text: String
+    var createdAt: String
+}
+
+struct MeetupMessagesResponse: Codable {
+    let messages: [MeetupMessage]
+}
+
+struct MeetupMessageResponse: Codable {
+    let message: MeetupMessage
+}

@@ -40,6 +40,8 @@ enum Constants {
         static func joinMeetup(_ meetupId: String) -> String { "/meetups/\(meetupId)/join" }
         static func leaveMeetup(_ meetupId: String) -> String { "/meetups/\(meetupId)/leave" }
         static func deleteMeetup(_ meetupId: String) -> String { "/meetups/\(meetupId)" }
+        static func meetupParticipants(_ meetupId: String) -> String { "/meetups/\(meetupId)/participants" }
+        static func meetupMessages(_ meetupId: String) -> String { "/meetups/\(meetupId)/messages" }
     }
 
     enum StorageKeys {

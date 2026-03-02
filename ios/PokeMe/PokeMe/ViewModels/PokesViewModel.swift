@@ -13,6 +13,12 @@ class PokesViewModel: ObservableObject {
 
     private var pollTimer: Timer?
     private var previousPokeIds: Set<String> = []
+    private let seenPokeIdsKey = "seenPokeIds"
+
+    init() {
+        let saved = UserDefaults.standard.stringArray(forKey: "seenPokeIds") ?? []
+        previousPokeIds = Set(saved)
+    }
 
     func fetchIncomingPokes(token: String?) async {
         guard let token = token else {
@@ -25,18 +31,18 @@ class PokesViewModel: ObservableObject {
         do {
             let response = try await MatchService.shared.getIncomingPokes(token: token)
 
-            // Detect new pokes for notifications
+            // Detect new pokes — compare against persisted seen IDs so
+            // notifications fire even on the first poll after app launch.
             let newPokeIds = Set(response.pokes.map { $0.id })
-            if !previousPokeIds.isEmpty {
-                let brandNewPokes = response.pokes.filter { !previousPokeIds.contains($0.id) }
-                for poke in brandNewPokes {
-                    sendLocalNotification(
-                        title: "New Poke!",
-                        body: "\(poke.fromUser.displayName) poked you! Poke back to match."
-                    )
-                }
+            let brandNewPokes = response.pokes.filter { !previousPokeIds.contains($0.id) }
+            for poke in brandNewPokes {
+                sendLocalNotification(
+                    title: "New Poke!",
+                    body: "\(poke.fromUser.displayName) poked you! Poke back to match."
+                )
             }
             previousPokeIds = newPokeIds
+            UserDefaults.standard.set(Array(newPokeIds), forKey: seenPokeIdsKey)
 
             incomingPokes = response.pokes
             pokeCount = response.count

@@ -5,11 +5,20 @@ struct MeetupsListView: View {
     @StateObject private var viewModel = MeetupViewModel()
     @State private var showCreateSheet = false
     @State private var selectedMeetup: Meetup?
+    @State private var showSportPicker = true
 
     private let sports = ["All"] + Sport.allCases.map { $0.rawValue }
     @State private var selectedSport = "All"
 
     var body: some View {
+        if showSportPicker {
+            MeetupSportPickerView { sport in
+                selectedSport = sport ?? "All"
+                viewModel.sportFilter = sport
+                Task { await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id) }
+                showSportPicker = false
+            }
+        } else {
         NavigationView {
             VStack(spacing: 0) {
                 // Sport filter pills
@@ -20,7 +29,7 @@ struct MeetupsListView: View {
                                 selectedSport = sport
                                 viewModel.sportFilter = sport == "All" ? nil : sport
                                 Task {
-                                    await viewModel.fetchMeetups(token: authViewModel.getToken())
+                                    await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
                                 }
                             }) {
                                 Text(sport)
@@ -95,6 +104,12 @@ struct MeetupsListView: View {
             }
             .navigationTitle("Meetups")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showSportPicker = true }) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .foregroundColor(.orange)
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showCreateSheet = true }) {
                         Image(systemName: "plus.circle.fill")
@@ -106,10 +121,16 @@ struct MeetupsListView: View {
                 }
             }
             .task {
-                await viewModel.fetchMeetups(token: authViewModel.getToken())
+                await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
+            }
+            .onAppear {
+                viewModel.startPolling(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
+            }
+            .onDisappear {
+                viewModel.stopPolling()
             }
             .refreshable {
-                await viewModel.fetchMeetups(token: authViewModel.getToken())
+                await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
             }
             .sheet(isPresented: $showCreateSheet) {
                 CreateMeetupView(viewModel: viewModel)
@@ -122,5 +143,6 @@ struct MeetupsListView: View {
                 }
             }
         }
+        } // end else
     }
 }

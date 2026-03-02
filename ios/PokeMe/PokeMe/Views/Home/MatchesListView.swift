@@ -4,7 +4,10 @@ struct MatchesListView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = MatchViewModel()
     @State private var selectedMatch: Match?
+    @State private var selectedGroupChat: Meetup?
     @State private var animateEmpty = false
+
+    private var isEmpty: Bool { viewModel.matches.isEmpty && viewModel.groupChats.isEmpty }
 
     var body: some View {
         NavigationView {
@@ -16,7 +19,7 @@ struct MatchesListView: View {
                         Text("Loading matches...")
                             .foregroundColor(.secondary)
                     }
-                } else if viewModel.matches.isEmpty {
+                } else if isEmpty {
                     VStack(spacing: 20) {
                         ZStack {
                             Circle()
@@ -45,11 +48,27 @@ struct MatchesListView: View {
                     .padding()
                     .onAppear { animateEmpty = true }
                 } else {
-                    List(viewModel.matches) { match in
-                        Button(action: {
-                            selectedMatch = match
-                        }) {
-                            MatchRow(match: match, currentUserId: authViewModel.user?.id ?? "")
+                    List {
+                        // Meetup group chats
+                        if !viewModel.groupChats.isEmpty {
+                            Section("Group Chats") {
+                                ForEach(viewModel.groupChats) { meetup in
+                                    Button(action: { selectedGroupChat = meetup }) {
+                                        MeetupGroupChatRow(meetup: meetup)
+                                    }
+                                }
+                            }
+                        }
+
+                        // 1-on-1 matches
+                        if !viewModel.matches.isEmpty {
+                            Section("1-on-1") {
+                                ForEach(viewModel.matches) { match in
+                                    Button(action: { selectedMatch = match }) {
+                                        MatchRow(match: match, currentUserId: authViewModel.user?.id ?? "")
+                                    }
+                                }
+                            }
                         }
                     }
                     .listStyle(.plain)
@@ -69,6 +88,71 @@ struct MatchesListView: View {
                 ChatView(matchId: match.id, partnerName: match.partnerName)
                     .environmentObject(authViewModel)
             }
+            .sheet(item: $selectedGroupChat) { meetup in
+                MeetupChatView(meetupId: meetup.id, meetupTitle: meetup.title)
+                    .environmentObject(authViewModel)
+            }
+        }
+    }
+}
+
+struct MeetupGroupChatRow: View {
+    let meetup: Meetup
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .frame(width: 56, height: 56)
+
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(meetup.title)
+                        .font(.headline)
+                    Text(sportEmoji(meetup.sport))
+                        .font(.subheadline)
+                }
+                Text("\(meetup.participantCount) players · \(meetup.date)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func sportEmoji(_ sport: String) -> String {
+        switch sport.lowercased() {
+        case "basketball": return "🏀"
+        case "tennis": return "🎾"
+        case "soccer": return "⚽"
+        case "volleyball": return "🏐"
+        case "badminton": return "🏸"
+        case "running": return "🏃"
+        case "swimming": return "🏊"
+        case "cycling": return "🚴"
+        case "table tennis": return "🏓"
+        case "football": return "🏈"
+        case "baseball": return "⚾"
+        case "golf": return "⛳"
+        case "hiking": return "🥾"
+        case "yoga": return "🧘"
+        case "rock climbing": return "🧗"
+        default: return "🏅"
         }
     }
 }

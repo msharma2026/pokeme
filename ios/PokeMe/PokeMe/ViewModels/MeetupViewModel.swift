@@ -9,12 +9,33 @@ class MeetupViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var sportFilter: String?
 
-    func fetchMeetups(token: String?) async {
+    private var previousCounts: [String: Int] = [:]
+    private var pollTimer: Timer?
+
+    func fetchMeetups(token: String?, currentUserId: String? = nil) async {
         guard let token = token else { return }
         isLoading = meetups.isEmpty
 
         do {
             let response = try await MeetupService.shared.getMeetups(token: token, sport: sportFilter)
+
+            // Detect new participants joining meetups the current user is in
+            if let userId = currentUserId {
+                for meetup in response.meetups {
+                    if meetup.participants?.contains(userId) == true {
+                        let oldCount = previousCounts[meetup.id] ?? meetup.participantCount
+                        if meetup.participantCount > oldCount {
+                            NotificationManager.shared.notify(
+                                title: "New player joined!",
+                                body: "Someone joined \(meetup.title)",
+                                identifier: "meetup-join-\(meetup.id)-\(meetup.participantCount)"
+                            )
+                        }
+                    }
+                    previousCounts[meetup.id] = meetup.participantCount
+                }
+            }
+
             meetups = response.meetups
             errorMessage = nil
         } catch {
@@ -22,6 +43,22 @@ class MeetupViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    func startPolling(token: String?, currentUserId: String?) {
+        stopPolling()
+        let timer = Timer(timeInterval: 30.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.fetchMeetups(token: token, currentUserId: currentUserId)
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        pollTimer = timer
+    }
+
+    func stopPolling() {
+        pollTimer?.invalidate()
+        pollTimer = nil
     }
 
     func fetchMyMeetups(token: String?) async {
@@ -53,6 +90,8 @@ class MeetupViewModel: ObservableObject {
             let response = try await MeetupService.shared.joinMeetup(token: token, meetupId: meetupId)
             if let index = meetups.firstIndex(where: { $0.id == meetupId }) {
                 meetups[index] = response.meetup
+                // Update previousCounts immediately so we don't self-notify on the next poll
+                previousCounts[meetupId] = response.meetup.participantCount
             }
         } catch {
             errorMessage = "Failed to join meetup"

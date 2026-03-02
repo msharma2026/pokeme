@@ -59,4 +59,29 @@ class MeetupService {
             token: token
         )
     }
+
+    func getParticipants(token: String, meetupId: String) async throws -> MeetupParticipantsResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.meetupParticipants(meetupId),
+            method: .GET,
+            token: token
+        )
+    }
+
+    func getMeetupMessages(token: String, meetupId: String) async throws -> MeetupMessagesResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.meetupMessages(meetupId),
+            method: .GET,
+            token: token
+        )
+    }
+
+    func sendMeetupMessage(token: String, meetupId: String, text: String) async throws -> MeetupMessageResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.meetupMessages(meetupId),
+            method: .POST,
+            body: ["text": text],
+            token: token
+        )
+    }
 }

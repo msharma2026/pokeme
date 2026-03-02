@@ -2,13 +2,14 @@ import SwiftUI
 
 struct DiscoverCardView: View {
     let user: User
+    let isPoked: Bool
     let onPoke: () -> Void
-    let onSkip: () -> Void
 
     @State private var pulseScale: CGFloat = 1.0
     @State private var appeared = false
 
     var body: some View {
+        ScrollView {
         VStack(spacing: 0) {
             // Profile picture with gradient overlay
             ZStack(alignment: .bottomLeading) {
@@ -18,7 +19,7 @@ struct DiscoverCardView: View {
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFill()
-                        .frame(height: 340)
+                        .frame(height: 420)
                         .clipped()
                 } else {
                     Rectangle()
@@ -29,7 +30,7 @@ struct DiscoverCardView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(height: 340)
+                        .frame(height: 420)
                         .overlay(
                             Text(user.displayName.prefix(1).uppercased())
                                 .font(.system(size: 90, weight: .black, design: .rounded))
@@ -187,64 +188,58 @@ struct DiscoverCardView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                // Action buttons
-                HStack(spacing: 20) {
-                    // Skip button with animation
-                    Button(action: onSkip) {
-                        ZStack {
-                            Circle()
-                                .fill(Color(.systemGray6))
-                                .frame(width: 64, height: 64)
-                            Circle()
-                                .stroke(Color.red.opacity(0.3), lineWidth: 2)
-                                .frame(width: 64, height: 64)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.red)
+                // Poke button
+                Button(action: isPoked ? {} : onPoke) {
+                    HStack(spacing: 10) {
+                        if isPoked {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 22, weight: .bold))
+                            Text("Poked!")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                        } else {
+                            ZStack {
+                                Circle()
+                                    .stroke(Color.orange.opacity(0.2), lineWidth: 2)
+                                    .frame(width: 44, height: 44)
+                                    .scaleEffect(pulseScale)
+                                    .opacity(2 - pulseScale)
+                                Image(systemName: "hand.point.right.fill")
+                                    .font(.system(size: 22, weight: .bold))
+                            }
+                            Text("Poke")
+                                .font(.headline)
+                                .fontWeight(.bold)
                         }
                     }
-
-                    Spacer()
-
-                    // Poke button with pulse animation
-                    Button(action: onPoke) {
-                        ZStack {
-                            // Pulse rings
-                            Circle()
-                                .stroke(Color.orange.opacity(0.2), lineWidth: 2)
-                                .frame(width: 80, height: 80)
-                                .scaleEffect(pulseScale)
-                                .opacity(2 - pulseScale)
-
-                            Circle()
-                                .fill(
-                                    LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                )
-                                .frame(width: 70, height: 70)
-                                .shadow(color: .orange.opacity(0.4), radius: 12, x: 0, y: 6)
-
-                            Image(systemName: "hand.point.right.fill")
-                                .font(.system(size: 28, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        isPoked
+                            ? LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
+                            : LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                    )
+                    .foregroundColor(.white)
+                    .cornerRadius(20)
+                    .shadow(color: (isPoked ? Color.green : Color.orange).opacity(0.35), radius: 10, x: 0, y: 5)
                 }
+                .disabled(isPoked)
                 .padding(.top, 4)
             }
             .padding(20)
         }
         .background(Color(.systemBackground))
-        .cornerRadius(24)
-        .shadow(color: Color.black.opacity(0.12), radius: 16, x: 0, y: 8)
-        .padding(.horizontal, 16)
+        } // end ScrollView
         .scaleEffect(appeared ? 1.0 : 0.95)
         .opacity(appeared ? 1 : 0)
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                 appeared = true
             }
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                pulseScale = 1.4
+            if !isPoked {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    pulseScale = 1.4
+                }
             }
         }
     }

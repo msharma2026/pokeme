@@ -56,6 +56,9 @@
 		DADADADADADADADADADADADADD /* MeetupCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DAA4DAA4DAA4DAA4DAA4DAA /* MeetupCardView.swift */; };
 		EBEBEBEBEBEBEBEBEBEBEBEBEB /* CreateMeetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBB5EBB5EBB5EBB5EBB5EBB /* CreateMeetupView.swift */; };
 		FCFCFCFCFCFCFCFCFCFCFCFC /* MeetupDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCC6FCC6FCC6FCC6FCC6FCC /* MeetupDetailView.swift */; };
+		F1F1F1F1F1F1F1F1F1F1F1F1 /* MeetupSportPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A2A2A2A2A2A2A2A2A2A2A2 /* MeetupSportPickerView.swift */; };
+		EC5D3A1B0F2748956C8E2D4F /* MeetupChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */; };
+		FD6E4B2C1038596A7D9F3E50 /* MeetupChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -117,6 +120,9 @@
 		4DAA4DAA4DAA4DAA4DAA4DAA /* MeetupCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupCardView.swift; sourceTree = "<group>"; };
 		5EBB5EBB5EBB5EBB5EBB5EBB /* CreateMeetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateMeetupView.swift; sourceTree = "<group>"; };
 		6FCC6FCC6FCC6FCC6FCC6FCC /* MeetupDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupDetailView.swift; sourceTree = "<group>"; };
+		A2A2A2A2A2A2A2A2A2A2A2A2 /* MeetupSportPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupSportPickerView.swift; sourceTree = "<group>"; };
+		47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupChatViewModel.swift; sourceTree = "<group>"; };
+		58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupChatView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -198,6 +204,7 @@
 				5CC76A347FDAE938F3AE0487 /* ChatViewModel.swift */,
 				1B5CD7C6496162B4268C0EC7 /* PokesViewModel.swift */,
 				FF66FF66FF66FF66FF66FF66 /* MeetupViewModel.swift */,
+				47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */,
 				B2C3D4E5F60718293A4B5C6D /* MessageNotificationPoller.swift */,
 			);
 			path = ViewModels;
@@ -218,7 +225,9 @@
 				3C993C993C993C993C993C99 /* MeetupsListView.swift */,
 				4DAA4DAA4DAA4DAA4DAA4DAA /* MeetupCardView.swift */,
 				5EBB5EBB5EBB5EBB5EBB5EBB /* CreateMeetupView.swift */,
+				A2A2A2A2A2A2A2A2A2A2A2A2 /* MeetupSportPickerView.swift */,
 				6FCC6FCC6FCC6FCC6FCC6FCC /* MeetupDetailView.swift */,
+				58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */,
 			);
 			path = Meetups;
 			sourceTree = "<group>";
@@ -431,6 +440,9 @@
 				DADADADADADADADADADADADADD /* MeetupCardView.swift in Sources */,
 				EBEBEBEBEBEBEBEBEBEBEBEBEB /* CreateMeetupView.swift in Sources */,
 				FCFCFCFCFCFCFCFCFCFCFCFC /* MeetupDetailView.swift in Sources */,
+				F1F1F1F1F1F1F1F1F1F1F1F1 /* MeetupSportPickerView.swift in Sources */,
+				EC5D3A1B0F2748956C8E2D4F /* MeetupChatViewModel.swift in Sources */,
+				FD6E4B2C1038596A7D9F3E50 /* MeetupChatView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -497,7 +509,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -632,7 +644,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

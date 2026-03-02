@@ -9,36 +9,36 @@ struct HomeView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
+            MeetupsListView()
+                .environmentObject(authViewModel)
+                .tabItem {
+                    Image(systemName: selectedTab == 0 ? "person.3.fill" : "person.3")
+                    Text("Meetups")
+                }
+                .tag(0)
+
             DiscoverView()
                 .environmentObject(authViewModel)
                 .tabItem {
-                    Image(systemName: selectedTab == 0 ? "sportscourt.fill" : "sportscourt")
+                    Image(systemName: selectedTab == 1 ? "sportscourt.fill" : "sportscourt")
                     Text("Discover")
                 }
-                .tag(0)
+                .tag(1)
 
             IncomingPokesView(viewModel: pokesViewModel)
                 .environmentObject(authViewModel)
                 .tabItem {
-                    Image(systemName: selectedTab == 1 ? "hand.point.right.fill" : "hand.point.right")
+                    Image(systemName: selectedTab == 2 ? "hand.point.right.fill" : "hand.point.right")
                     Text("Pokes")
                 }
-                .tag(1)
+                .tag(2)
                 .badge(pokesViewModel.pokeCount)
 
             MatchesListView()
                 .environmentObject(authViewModel)
                 .tabItem {
-                    Image(systemName: selectedTab == 2 ? "message.fill" : "message")
+                    Image(systemName: selectedTab == 3 ? "message.fill" : "message")
                     Text("Matches")
-                }
-                .tag(2)
-
-            MeetupsListView()
-                .environmentObject(authViewModel)
-                .tabItem {
-                    Image(systemName: selectedTab == 3 ? "person.3.fill" : "person.3")
-                    Text("Meetups")
                 }
                 .tag(3)
 
