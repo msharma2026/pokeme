@@ -146,22 +146,32 @@ struct DiscoverView: View {
     }
 
     private var profilesView: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: 0) {
-                ForEach(viewModel.profiles) { profile in
-                    DiscoverCardView(
-                        user: profile,
-                        isPoked: viewModel.pokedIds.contains(profile.id),
-                        onPoke: {
-                            Task { await viewModel.pokeProfile(token: authViewModel.getToken(), user: profile) }
-                        }
-                    )
-                    .containerRelativeFrame(.vertical)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(viewModel.profiles.enumerated()), id: \.element.id) { index, profile in
+                        DiscoverCardView(
+                            user: profile,
+                            isPoked: viewModel.pokedIds.contains(profile.id),
+                            onPoke: {
+                                Task { await viewModel.pokeProfile(token: authViewModel.getToken(), user: profile) }
+                            },
+                            onSkip: {
+                                let nextIndex = index + 1
+                                guard nextIndex < viewModel.profiles.count else { return }
+                                withAnimation(Theme.Anim.spring) {
+                                    proxy.scrollTo(viewModel.profiles[nextIndex].id, anchor: .top)
+                                }
+                            }
+                        )
+                        .containerRelativeFrame(.vertical)
+                        .id(profile.id)
+                    }
                 }
+                .scrollTargetLayout()
             }
-            .scrollTargetLayout()
+            .scrollTargetBehavior(.paging)
         }
-        .scrollTargetBehavior(.paging)
     }
 
     private func sportEmoji(_ sport: String) -> String {

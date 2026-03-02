@@ -1,6 +1,8 @@
 import SwiftUI
 import PhotosUI
 
+private let bioMaxLength = 250
+
 struct EditProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = ProfileViewModel()
@@ -17,9 +19,22 @@ struct EditProfileView: View {
     @State private var sports: [SportEntry] = []
     @State private var availability: [String: [String]] = [:]
 
+    // Initial snapshot for dirty-tracking
+    @State private var initialDisplayName = ""
+    @State private var initialMajor = ""
+    @State private var initialBio = ""
+    @State private var initialInstagram = ""
+    @State private var initialTwitter = ""
+    @State private var initialSnapchat = ""
+    @State private var initialLinkedin = ""
+    @State private var initialYear = ""
+    @State private var initialSports: [SportEntry] = []
+    @State private var initialAvailability: [String: [String]] = [:]
+
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var profileImage: UIImage?
     @State private var showPhotoSizeAlert = false
+    @State private var showDuplicateSportAlert = false
 
     // For adding a sport
     @State private var showAddSport = false
@@ -32,6 +47,21 @@ struct EditProfileView: View {
     private let timeSlots = ["Morning", "Afternoon", "Evening"]
     private let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     private let dayAbbreviations = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    // MARK: - Dirty tracking
+
+    private var isDirty: Bool {
+        displayName != initialDisplayName
+            || major != initialMajor
+            || bio != initialBio
+            || instagram != initialInstagram
+            || twitter != initialTwitter
+            || snapchat != initialSnapchat
+            || linkedin != initialLinkedin
+            || selectedYear != initialYear
+            || sports != initialSports
+            || availability != initialAvailability
+    }
 
     var body: some View {
         NavigationView {
@@ -88,9 +118,11 @@ struct EditProfileView: View {
                 }
 
                 // Sports
-                Section("Sports") {
+                Section {
                     ForEach(sports) { sport in
                         HStack {
+                            Text(sportEmoji(sport.sport))
+                                .font(.title3)
                             Text(sport.sport)
                             Spacer()
                             Text(sport.skillLevel)
@@ -111,12 +143,21 @@ struct EditProfileView: View {
                             Text("Add Sport")
                         }
                     }
+                } header: {
+                    HStack {
+                        Text("Sports")
+                        Spacer()
+                        if sports.isEmpty {
+                            Text("Add at least 2 for better matches")
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
+                    }
                 }
 
                 // Availability Calendar Grid
                 Section("Availability") {
                     VStack(spacing: 0) {
-                        // Header row with day abbreviations
                         HStack(spacing: 0) {
                             Text("")
                                 .frame(width: 70, alignment: .leading)
@@ -130,7 +171,6 @@ struct EditProfileView: View {
                         }
                         .padding(.bottom, 6)
 
-                        // Row for each time slot
                         ForEach(timeSlots, id: \.self) { slot in
                             HStack(spacing: 0) {
                                 Text(slot)
@@ -144,7 +184,7 @@ struct EditProfileView: View {
                                         toggleAvailability(day: day, slot: slot)
                                     }) {
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(isSelected ? Color.blue : Color(.systemGray5))
+                                            .fill(isSelected ? Color.orange : Color(uiColor: .systemGray5))
                                             .frame(height: 36)
                                             .overlay(
                                                 isSelected ? Image(systemName: "checkmark")
@@ -161,7 +201,6 @@ struct EditProfileView: View {
                     }
                     .padding(.vertical, 4)
 
-                    // Custom hour entries
                     let customHours = getCustomHourEntries()
                     if !customHours.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
@@ -179,9 +218,7 @@ struct EditProfileView: View {
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                     Spacer()
-                                    Button(action: {
-                                        removeCustomHours(day: entry.day)
-                                    }) {
+                                    Button(action: { removeCustomHours(day: entry.day) }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .foregroundColor(.red)
                                             .font(.caption)
@@ -189,7 +226,7 @@ struct EditProfileView: View {
                                 }
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(Color(.systemGray6))
+                                .background(Color(uiColor: .systemGray6))
                                 .cornerRadius(8)
                             }
                         }
@@ -206,10 +243,23 @@ struct EditProfileView: View {
                     .padding(.top, 4)
                 }
 
-                // Bio
-                Section("Bio") {
+                // Bio with character counter
+                Section {
                     TextEditor(text: $bio)
-                        .frame(minHeight: 100)
+                        .frame(minHeight: 80)
+                        .onChange(of: bio) { newValue in
+                            if newValue.count > bioMaxLength {
+                                bio = String(newValue.prefix(bioMaxLength))
+                            }
+                        }
+                    HStack {
+                        Spacer()
+                        Text("\(bio.count)/\(bioMaxLength)")
+                            .font(.caption2)
+                            .foregroundColor(bio.count > Int(Double(bioMaxLength) * 0.9) ? .orange : .secondary)
+                    }
+                } header: {
+                    Text("Bio")
                 }
 
                 // Social Links
@@ -242,15 +292,13 @@ struct EditProfileView: View {
 
                 if let error = viewModel.errorMessage {
                     Section {
-                        Text(error)
-                            .foregroundColor(.red)
+                        Text(error).foregroundColor(.red)
                     }
                 }
 
                 if let success = viewModel.successMessage {
                     Section {
-                        Text(success)
-                            .foregroundColor(.green)
+                        Text(success).foregroundColor(.green)
                     }
                 }
             }
@@ -258,22 +306,24 @@ struct EditProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        Task {
-                            await saveProfile()
-                        }
+                        Task { await saveProfile() }
                     }
                     .disabled(viewModel.isLoading)
+                    .fontWeight(.semibold)
+                    .foregroundColor(isDirty ? .orange : .secondary)
                 }
             }
-            .onAppear {
-                loadCurrentValues()
+            // ── Sticky unsaved-changes bar ──
+            .safeAreaInset(edge: .bottom) {
+                if isDirty {
+                    unsavedChangesBar
+                }
             }
+            .onAppear { loadCurrentValues() }
             .onChange(of: selectedPhoto) { newValue in
                 Task {
                     if let data = try? await newValue?.loadTransferable(type: Data.self) {
@@ -295,6 +345,11 @@ struct EditProfileView: View {
             } message: {
                 Text("Please choose a smaller image (under 2 MB). Try a lower-resolution photo or a cropped version.")
             }
+            .alert("Sport Already Added", isPresented: $showDuplicateSportAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("You already have \(newSport.rawValue) in your sports list.")
+            }
             .sheet(isPresented: $showAddSport) {
                 addSportSheet
             }
@@ -303,6 +358,52 @@ struct EditProfileView: View {
             }
         }
     }
+
+    // MARK: - Sticky Save Bar
+
+    private var unsavedChangesBar: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "pencil.circle.fill")
+                .foregroundColor(.orange)
+            Text("Unsaved changes")
+                .font(.subheadline)
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            Button("Discard") {
+                loadCurrentValues()
+            }
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+
+            Button(action: { Task { await saveProfile() } }) {
+                HStack(spacing: 4) {
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .tint(.white)
+                    }
+                    Text("Save")
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(
+                    LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                )
+                .cornerRadius(Theme.Radius.chip)
+            }
+            .disabled(viewModel.isLoading)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .overlay(Divider(), alignment: .top)
+    }
+
+    // MARK: - Add Sport Sheet
 
     private var addSportSheet: some View {
         NavigationView {
@@ -318,6 +419,17 @@ struct EditProfileView: View {
                         Text(level.rawValue).tag(level)
                     }
                 }
+
+                // Duplicate warning inline
+                if sports.contains(where: { $0.sport == newSport.rawValue }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("\(newSport.rawValue) is already in your list")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
             }
             .navigationTitle("Add Sport")
             .navigationBarTitleDisplayMode(.inline)
@@ -330,14 +442,19 @@ struct EditProfileView: View {
                         let entry = SportEntry(sport: newSport.rawValue, skillLevel: newSkillLevel.rawValue)
                         if !sports.contains(where: { $0.sport == entry.sport }) {
                             sports.append(entry)
+                            showAddSport = false
+                        } else {
+                            showDuplicateSportAlert = true
                         }
-                        showAddSport = false
                     }
+                    .disabled(sports.contains(where: { $0.sport == newSport.rawValue }))
                 }
             }
         }
         .presentationDetents([.height(250)])
     }
+
+    // MARK: - Logic
 
     private func toggleAvailability(day: String, slot: String) {
         var daySlots = availability[day] ?? []
@@ -361,6 +478,18 @@ struct EditProfileView: View {
             selectedYear = user.collegeYear ?? ""
             sports = user.sports ?? []
             availability = user.availability ?? [:]
+
+            // Snapshot for dirty tracking
+            initialDisplayName = displayName
+            initialMajor = major
+            initialBio = bio
+            initialInstagram = instagram
+            initialTwitter = twitter
+            initialSnapchat = snapchat
+            initialLinkedin = linkedin
+            initialYear = selectedYear
+            initialSports = sports
+            initialAvailability = availability
         }
     }
 
@@ -408,7 +537,6 @@ struct EditProfileView: View {
     }
 
     private func getCustomHourEntries() -> [CustomHourEntry] {
-        let days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         var entries: [CustomHourEntry] = []
         for day in days {
             guard let slots = availability[day] else { continue }
@@ -435,6 +563,27 @@ struct EditProfileView: View {
         let renderer = UIGraphicsImageRenderer(size: newSize)
         return renderer.image { _ in
             image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+    }
+
+    private func sportEmoji(_ sport: String) -> String {
+        switch sport.lowercased() {
+        case "basketball": return "🏀"
+        case "tennis": return "🎾"
+        case "soccer": return "⚽"
+        case "volleyball": return "🏐"
+        case "badminton": return "🏸"
+        case "running": return "🏃"
+        case "swimming": return "🏊"
+        case "cycling": return "🚴"
+        case "table tennis": return "🏓"
+        case "football": return "🏈"
+        case "baseball": return "⚾"
+        case "golf": return "⛳"
+        case "hiking": return "🥾"
+        case "yoga": return "🧘"
+        case "rock climbing": return "🧗"
+        default: return "🏅"
         }
     }
 }

@@ -12,7 +12,12 @@ struct MatchesListView: View {
     @State private var selectedMatch: Match?
     @State private var selectedGroupChat: Meetup?
     @State private var animateEmpty = false
-    @State private var selectedFilter: MatchFilter = .all
+    @AppStorage("matchesSelectedFilter") private var selectedFilterRaw: String = MatchFilter.all.rawValue
+
+    private var selectedFilter: MatchFilter {
+        get { MatchFilter(rawValue: selectedFilterRaw) ?? .all }
+        set { selectedFilterRaw = newValue.rawValue }
+    }
 
     private var currentUserId: String { authViewModel.user?.id ?? "" }
 
@@ -39,9 +44,9 @@ struct MatchesListView: View {
                 } else {
                     VStack(spacing: 0) {
                         // Segmented control
-                        Picker("Filter", selection: $selectedFilter) {
+                        Picker("Filter", selection: $selectedFilterRaw) {
                             ForEach(MatchFilter.allCases, id: \.self) { filter in
-                                Text(filter.rawValue).tag(filter)
+                                Text(filter.rawValue).tag(filter.rawValue)
                             }
                         }
                         .pickerStyle(.segmented)
