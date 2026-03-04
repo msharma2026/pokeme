@@ -12,6 +12,7 @@ struct MatchesListView: View {
     @State private var selectedMatch: Match?
     @State private var selectedGroupChat: Meetup?
     @State private var selectedProfileMatch: Match?
+    @State private var selectedGroupMembers: Meetup?
     @State private var animateEmpty = false
     @AppStorage("matchesSelectedFilter") private var selectedFilterRaw: String = MatchFilter.all.rawValue
 
@@ -60,7 +61,35 @@ struct MatchesListView: View {
                                 Section("Group Chats") {
                                     ForEach(filteredGroupChats) { meetup in
                                         Button(action: { selectedGroupChat = meetup }) {
-                                            MeetupGroupChatRow(meetup: meetup)
+                                            MeetupGroupChatRow(
+                                                meetup: meetup,
+                                                onAvatarTap: { selectedGroupMembers = meetup }
+                                            )
+                                        }
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                            Button(role: .destructive) {
+                                                Task { await viewModel.leaveMeetup(token: authViewModel.getToken(), meetupId: meetup.id) }
+                                            } label: {
+                                                Label(meetup.hostId == currentUserId ? "Delete" : "Leave", systemImage: "rectangle.portrait.and.arrow.right")
+                                            }
+                                            Button {
+                                                selectedGroupMembers = meetup
+                                            } label: {
+                                                Label("Members", systemImage: "person.3")
+                                            }
+                                            .tint(.blue)
+                                        }
+                                        .contextMenu {
+                                            Button {
+                                                selectedGroupMembers = meetup
+                                            } label: {
+                                                Label("View Members", systemImage: "person.3")
+                                            }
+                                            Button(role: .destructive) {
+                                                Task { await viewModel.leaveMeetup(token: authViewModel.getToken(), meetupId: meetup.id) }
+                                            } label: {
+                                                Label(meetup.hostId == currentUserId ? "Delete Group" : "Leave Group", systemImage: "rectangle.portrait.and.arrow.right")
+                                            }
                                         }
                                     }
                                 }
@@ -145,6 +174,10 @@ struct MatchesListView: View {
             .sheet(item: $selectedProfileMatch) { match in
                 PartnerProfileSheet(match: match)
             }
+            .sheet(item: $selectedGroupMembers) { meetup in
+                GroupMembersSheet(meetup: meetup)
+                    .environmentObject(authViewModel)
+            }
         }
     }
 
@@ -199,25 +232,29 @@ struct MatchesListView: View {
 
 struct MeetupGroupChatRow: View {
     let meetup: Meetup
+    var onAvatarTap: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
-            // Group avatar with sport emoji overlay
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .frame(width: 52, height: 52)
+            // Group avatar (tappable to view members)
+            Button(action: { onAvatarTap?() }) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .frame(width: 52, height: 52)
 
-                VStack(spacing: 1) {
-                    Text(sportEmoji(meetup.sport))
-                        .font(.system(size: 16))
-                    Image(systemName: "person.3.fill")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.85))
+                    VStack(spacing: 1) {
+                        Text(sportEmoji(meetup.sport))
+                            .font(.system(size: 16))
+                        Image(systemName: "person.3.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.85))
+                    }
                 }
             }
+            .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(meetup.title)
@@ -408,6 +445,233 @@ struct MatchRow: View {
         let df = DateFormatter()
         df.dateStyle = .short
         return df.string(from: date)
+    }
+}
+
+// MARK: - Group Members Sheet
+
+struct GroupMembersSheet: View {
+    let meetup: Meetup
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var participants: [User] = []
+    @State private var isLoading = true
+    @State private var selectedUser: User?
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if isLoading {
+                    VStack(spacing: 12) {
+                        ProgressView().tint(.purple)
+                        Text("Loading members…").foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(participants) { user in
+                        Button(action: { selectedUser = user }) {
+                            MemberRow(user: user, isCurrentUser: user.id == authViewModel.user?.id)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("\(meetup.title) Members")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundColor(.purple)
+                }
+            }
+            .task {
+                guard let token = authViewModel.getToken() else { return }
+                if let response = try? await MeetupService.shared.getParticipants(token: token, meetupId: meetup.id) {
+                    participants = response.participants
+                }
+                isLoading = false
+            }
+            .sheet(item: $selectedUser) { user in
+                UserProfileSheet(user: user)
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+struct MemberRow: View {
+    let user: User
+    let isCurrentUser: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 46, height: 46)
+                if let data = user.profilePicture,
+                   let imageData = Data(base64Encoded: data.replacingOccurrences(of: "data:image/jpeg;base64,", with: "")),
+                   let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 42, height: 42)
+                        .clipShape(Circle())
+                } else {
+                    Text(user.displayName.prefix(1).uppercased())
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(user.displayName)
+                        .font(.headline)
+                    if isCurrentUser {
+                        Text("You")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.purple)
+                            .cornerRadius(6)
+                    }
+                }
+                if let year = user.collegeYear {
+                    Text(year)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if !isCurrentUser {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(Color(.tertiaryLabel))
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - User Profile Sheet
+
+struct UserProfileSheet: View {
+    let user: User
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header
+                    ZStack {
+                        LinearGradient(colors: [.purple, .indigo, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            .frame(height: 200)
+
+                        VStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white.opacity(0.2))
+                                    .frame(width: 96, height: 96)
+                                if let data = user.profilePicture,
+                                   let imageData = Data(base64Encoded: data.replacingOccurrences(of: "data:image/jpeg;base64,", with: "")),
+                                   let uiImage = UIImage(data: imageData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 90, height: 90)
+                                        .clipShape(Circle())
+                                } else {
+                                    Text(user.displayName.prefix(1).uppercased())
+                                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            Text(user.displayName)
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                            if let year = user.collegeYear {
+                                Text(year)
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(10)
+                            }
+                        }
+                        .padding(.top, 16)
+                    }
+
+                    // Sports
+                    if let sports = user.sports, !sports.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Sports", systemImage: "figure.run")
+                                .font(.headline)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(sports) { sport in
+                                        HStack(spacing: 4) {
+                                            Text(sport.sport).fontWeight(.medium)
+                                            Text(sport.skillLevel)
+                                                .font(.caption)
+                                                .foregroundColor(.purple.opacity(0.7))
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.purple.opacity(0.12))
+                                        .foregroundColor(.purple)
+                                        .cornerRadius(14)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                    }
+
+                    // Bio
+                    if let bio = user.bio, !bio.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Bio", systemImage: "text.quote")
+                                .font(.headline)
+                            Text(bio)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                    }
+                }
+                .padding(.bottom, 32)
+            }
+            .ignoresSafeArea(edges: .top)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundColor(.purple)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

@@ -67,6 +67,12 @@ class MatchViewModel: ObservableObject {
         try? await MatchService.shared.deleteMatch(token: token, matchId: matchId)
     }
 
+    func leaveMeetup(token: String?, meetupId: String) async {
+        groupChats.removeAll { $0.id == meetupId }
+        guard let token = token else { return }
+        try? await MeetupService.shared.leaveMeetup(token: token, meetupId: meetupId)
+    }
+
     func startPolling(token: String?) {
         stopPolling()
         let timer = Timer(timeInterval: 5.0, repeats: true) { [weak self] _ in
