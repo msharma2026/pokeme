@@ -35,22 +35,19 @@ struct DiscoverView: View {
                 .padding(.vertical, 8)
 
                 ZStack(alignment: .top) {
-                    // Refresh indicator revealed as content shifts down
-                    refreshIndicatorView
-                        .frame(height: 48)
-                        .frame(maxWidth: .infinity)
+                    stateContent
 
-                    // Content + new-people pill, shifted down during pull
-                    ZStack(alignment: .top) {
-                        stateContent
-
-                        if viewModel.newProfilesAvailable {
-                            newPeoplePill
-                        }
+                    if viewModel.newProfilesAvailable {
+                        newPeoplePill
                     }
-                    .animation(.spring(response: 0.4), value: viewModel.newProfilesAvailable)
-                    .offset(y: pullOffset)
 
+                    // Refresh indicator slides in from top edge (doesn't affect content layout)
+                    if isRefreshing || pullOffset > 8 {
+                        refreshOverlayView
+                    }
+                }
+                .animation(.spring(response: 0.4), value: viewModel.newProfilesAvailable)
+                .overlay(alignment: .top) {
                     // Invisible pull-gesture capture zone at the very top
                     Color.clear
                         .frame(maxWidth: .infinity)
@@ -90,45 +87,54 @@ struct DiscoverView: View {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
                 guard !isRefreshing, value.translation.height > 0 else { return }
-                pullOffset = min(value.translation.height * 0.55, refreshThreshold * 1.3)
+                withAnimation(.interactiveSpring()) {
+                    pullOffset = min(value.translation.height * 0.55, refreshThreshold * 1.3)
+                }
             }
             .onEnded { _ in
                 if pullOffset >= refreshThreshold {
                     triggerRefresh()
                 } else {
-                    withAnimation(.spring(response: 0.4)) { pullOffset = 0 }
+                    withAnimation(.spring(response: 0.3)) { pullOffset = 0 }
                 }
             }
     }
 
     private func triggerRefresh() {
-        isRefreshing = true
-        withAnimation(.spring(response: 0.3)) { pullOffset = 48 }
+        withAnimation(.spring(response: 0.3)) {
+            isRefreshing = true
+            pullOffset = 0
+        }
         Task {
             await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
             withAnimation(.spring(response: 0.4)) {
-                pullOffset = 0
                 isRefreshing = false
             }
         }
     }
 
-    private var refreshIndicatorView: some View {
-        ZStack {
+    private var refreshOverlayView: some View {
+        HStack(spacing: 8) {
             if isRefreshing {
                 ProgressView()
                     .tint(.orange)
+                    .scaleEffect(0.85)
             } else {
                 Image(systemName: "arrow.down")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.secondary)
                     .rotationEffect(.degrees(pullOffset >= refreshThreshold ? 180 : 0))
                     .animation(.spring(response: 0.3), value: pullOffset >= refreshThreshold)
-                    .opacity(pullOffset > 8 ? 1 : 0)
             }
+            Text(isRefreshing ? "Refreshing…" : pullOffset >= refreshThreshold ? "Release to refresh" : "Pull to refresh")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
         }
-        .opacity(isRefreshing ? 1 : min(Double(pullOffset) / 20.0, 1.0))
-        .frame(maxHeight: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity)
+        .frame(height: 36)
+        .background(.ultraThinMaterial)
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - New People Pill
@@ -254,31 +260,21 @@ struct DiscoverView: View {
     }
 
     private var profilesView: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(viewModel.profiles.enumerated()), id: \.element.id) { index, profile in
-                        DiscoverCardView(
-                            user: profile,
-                            isPoked: viewModel.pokedIds.contains(profile.id),
-                            onPoke: {
-                                Task { await viewModel.pokeProfile(token: authViewModel.getToken(), user: profile) }
-                            },
-                            onSkip: {
-                                let nextIndex = index + 1
-                                guard nextIndex < viewModel.profiles.count else { return }
-                                withAnimation(Theme.Anim.spring) {
-                                    proxy.scrollTo(viewModel.profiles[nextIndex].id, anchor: .top)
-                                }
-                            }
-                        )
-                        .containerRelativeFrame(.vertical)
-                        .id(profile.id)
-                    }
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: 16) {
+                ForEach(viewModel.profiles) { profile in
+                    DiscoverCardView(
+                        user: profile,
+                        isPoked: viewModel.pokedIds.contains(profile.id),
+                        onPoke: {
+                            Task { await viewModel.pokeProfile(token: authViewModel.getToken(), user: profile) }
+                        },
+                        onSkip: {}
+                    )
                 }
-                .scrollTargetLayout()
             }
-            .scrollTargetBehavior(.paging)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
         }
     }
 
