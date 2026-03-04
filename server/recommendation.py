@@ -311,6 +311,11 @@ def _heuristic_score(viewer, candidate):
     }
 
 
+def score_user_pair(viewer, candidate):
+    """Public wrapper around the heuristic scorer for a single viewer-candidate pair."""
+    return _heuristic_score(viewer, candidate)
+
+
 def _rank_heuristic(viewer, candidates):
     """Rank candidates using the heuristic formula (fallback)."""
     ranked = []

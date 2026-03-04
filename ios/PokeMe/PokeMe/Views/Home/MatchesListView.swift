@@ -96,6 +96,9 @@ struct MatchesListView: View {
                 await viewModel.fetchMatches(token: authViewModel.getToken())
             }
             .onAppear {
+                Task {
+                    await viewModel.fetchMatches(token: authViewModel.getToken())
+                }
                 viewModel.startPolling(token: authViewModel.getToken())
             }
             .onDisappear {

@@ -49,9 +49,12 @@ class MatchViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
 
-        // Fetch meetup group chats (meetups with 2+ participants the user is in)
-        if let meetupResponse = try? await MeetupService.shared.getMyMeetups(token: token) {
-            groupChats = meetupResponse.meetups.filter { $0.participantCount >= 2 }
+        // Fetch meetup group chats (server already filters to active meetups the user is in)
+        do {
+            let meetupResponse = try await MeetupService.shared.getMyMeetups(token: token)
+            groupChats = meetupResponse.meetups
+        } catch {
+            // Keep existing groupChats on transient failures so stale data stays visible
         }
 
         isLoading = false

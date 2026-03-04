@@ -60,17 +60,17 @@ class TestAuthEndpoints:
 
 
 class TestMatchEndpoints:
-    def test_today_match_without_token(self, client):
-        """Test /match/today without token."""
-        response = client.get('/api/match/today')
+    def test_matches_without_token(self, client):
+        """Test /matches without token."""
+        response = client.get('/api/matches')
         data = json.loads(response.data)
 
         assert response.status_code == 401
         assert data['success'] is False
 
-    def test_disconnect_without_token(self, client):
-        """Test /match/disconnect without token."""
-        response = client.post('/api/match/disconnect')
+    def test_discover_without_token(self, client):
+        """Test /discover without token."""
+        response = client.get('/api/discover')
         data = json.loads(response.data)
 
         assert response.status_code == 401

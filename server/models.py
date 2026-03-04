@@ -60,19 +60,19 @@ def meetup_to_dict(entity):
         return None
     return {
         'id': entity.key.name or str(entity.key.id),
-        'hostId': entity.get('hostId'),
-        'hostName': entity.get('hostName'),
-        'sport': entity.get('sport'),
-        'title': entity.get('title'),
+        'hostId': entity.get('hostId') or '',
+        'hostName': entity.get('hostName') or 'Unknown',
+        'sport': entity.get('sport') or '',
+        'title': entity.get('title') or '',
         'description': entity.get('description'),
-        'date': entity.get('date'),
-        'time': entity.get('time'),
+        'date': entity.get('date') or '',
+        'time': entity.get('time') or '',
         'location': entity.get('location'),
-        'skillLevels': entity.get('skillLevels', []),
+        'skillLevels': entity.get('skillLevels') or [],
         'playerLimit': entity.get('playerLimit'),
-        'participants': entity.get('participants', []),
-        'status': entity.get('status', 'active'),
-        'createdAt': entity.get('createdAt'),
+        'participants': entity.get('participants') or [],
+        'status': entity.get('status') or 'active',
+        'createdAt': entity.get('createdAt') or '',
     }
 
 
