@@ -39,6 +39,7 @@
 		D8CF1B246458C967B8CCE92F /* APIResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2009AAFF343A3A959EF007E /* APIResponse.swift */; };
 		DEAE6D07C60D061996582ABE /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B1D240D2292FC13DBE8C43C /* HomeView.swift */; };
 		E6CC100073B1D69EC90761C3 /* PhoneLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53E0B99F8F6A39A7EBB6B58D /* PhoneLoginView.swift */; };
+		AA1234560000000000000002 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1234560000000000000001 /* OnboardingView.swift */; };
 		E6E6AF969629511EF1CE4D2D /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 767C403171D42A4932C5DEAB /* RegisterView.swift */; };
 		EEAFD4C11CB0CBB260334224 /* Match.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE86E5D860927083FB2C3392 /* Match.swift */; };
 		F05C4E96ABBF8CEE4475CE70 /* MatchesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52ED4ECFB0A2BEBD9C8188FC /* MatchesListView.swift */; };
@@ -90,6 +91,7 @@
 		64B60F2397FACE24BCD86520 /* MatchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchViewModel.swift; sourceTree = "<group>"; };
 		6AA197A1FD1F1B2D95FB0F19 /* ProfileService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProfileService.swift; sourceTree = "<group>"; };
 		6C0B4AED6D2A3EBF94344697 /* VerifyCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerifyCodeView.swift; sourceTree = "<group>"; };
+		AA1234560000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		767C403171D42A4932C5DEAB /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
 		7E56F3C0BB3280C7B2BD7149 /* PokeMeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PokeMeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		85E9A8E1ACF27FC48BADAD64 /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -192,6 +194,7 @@
 			children = (
 				2BB19A5FC8ECAC75BD4373DF /* LoginView.swift */,
 				53E0B99F8F6A39A7EBB6B58D /* PhoneLoginView.swift */,
+				AA1234560000000000000001 /* OnboardingView.swift */,
 				767C403171D42A4932C5DEAB /* RegisterView.swift */,
 				6C0B4AED6D2A3EBF94344697 /* VerifyCodeView.swift */,
 			);
@@ -414,6 +417,7 @@
 				65E42863626E7EBF74BE4D1E /* PhoneAuthService.swift in Sources */,
 				E6CC100073B1D69EC90761C3 /* PhoneLoginView.swift in Sources */,
 				42AC334042D7C4AC3056B06D /* PokeMeApp.swift in Sources */,
+				AA1234560000000000000002 /* OnboardingView.swift in Sources */,
 				E6E6AF969629511EF1CE4D2D /* RegisterView.swift in Sources */,
 				4BD511B7A351B20E233568A0 /* User.swift in Sources */,
 				73DFF8553D8BE009875DA32E /* VerifyCodeView.swift in Sources */,

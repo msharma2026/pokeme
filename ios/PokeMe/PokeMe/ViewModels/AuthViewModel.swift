@@ -5,6 +5,7 @@ import SwiftUI
 class AuthViewModel: ObservableObject {
     @Published var user: User?
     @Published var isAuthenticated = false
+    @Published var needsOnboarding = false
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showEmailLogin = false
@@ -75,6 +76,7 @@ class AuthViewModel: ObservableObject {
             token = response.token
             user = response.user
             isAuthenticated = true
+            needsOnboarding = true
         } catch let error as NetworkError {
             errorMessage = error.errorDescription
         } catch {

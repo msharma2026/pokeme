@@ -22,8 +22,13 @@ struct PokeMeApp: App {
         WindowGroup {
             Group {
                 if authViewModel.isAuthenticated {
-                    HomeView()
-                        .environmentObject(authViewModel)
+                    if authViewModel.needsOnboarding {
+                        OnboardingView()
+                            .environmentObject(authViewModel)
+                    } else {
+                        HomeView()
+                            .environmentObject(authViewModel)
+                    }
                 } else if authViewModel.showEmailLogin {
                     LoginView()
                         .environmentObject(authViewModel)
