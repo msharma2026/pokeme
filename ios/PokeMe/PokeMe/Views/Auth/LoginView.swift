@@ -63,14 +63,24 @@ struct LoginView: View {
 
                 Spacer()
 
-                // Register Link
-                Button(action: { showRegister = true }) {
-                    HStack {
-                        Text("Don't have an account?")
-                            .foregroundColor(.secondary)
-                        Text("Register")
-                            .foregroundColor(.blue)
-                            .fontWeight(.semibold)
+                VStack(spacing: 12) {
+                    Button(action: { authViewModel.showEmailLogin = false }) {
+                        HStack {
+                            Text("Prefer number?")
+                                .foregroundColor(.secondary)
+                            Text("Login with number")
+                                .foregroundColor(.blue)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    Button(action: { showRegister = true }) {
+                        HStack {
+                            Text("Don't have an account?")
+                                .foregroundColor(.secondary)
+                            Text("Register")
+                                .foregroundColor(.blue)
+                                .fontWeight(.semibold)
+                        }
                     }
                 }
                 .padding(.bottom, 32)
