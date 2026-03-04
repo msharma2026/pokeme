@@ -6,6 +6,7 @@ import UserNotifications
 class PokesViewModel: ObservableObject {
     @Published var incomingPokes: [IncomingPoke] = []
     @Published var isLoading = false
+    @Published var hasLoadedOnce = false
     @Published var errorMessage: String?
     @Published var pokeCount: Int = 0
     @Published var showMatchAlert = false
@@ -26,7 +27,7 @@ class PokesViewModel: ObservableObject {
             return
         }
 
-        isLoading = incomingPokes.isEmpty
+        if !hasLoadedOnce { isLoading = true }
 
         do {
             let response = try await MatchService.shared.getIncomingPokes(token: token)
@@ -47,10 +48,13 @@ class PokesViewModel: ObservableObject {
             incomingPokes = response.pokes
             pokeCount = response.count
             errorMessage = nil
+            hasLoadedOnce = true
         } catch let error as NetworkError {
             errorMessage = error.errorDescription
+            hasLoadedOnce = true
         } catch {
             errorMessage = error.localizedDescription
+            hasLoadedOnce = true
         }
 
         isLoading = false
