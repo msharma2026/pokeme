@@ -60,6 +60,13 @@ class MatchViewModel: ObservableObject {
         isLoading = false
     }
 
+    func deleteMatch(token: String?, matchId: String) async {
+        // Optimistic local removal
+        matches.removeAll { $0.id == matchId }
+        guard let token = token else { return }
+        try? await MatchService.shared.deleteMatch(token: token, matchId: matchId)
+    }
+
     func startPolling(token: String?) {
         stopPolling()
         let timer = Timer(timeInterval: 5.0, repeats: true) { [weak self] _ in

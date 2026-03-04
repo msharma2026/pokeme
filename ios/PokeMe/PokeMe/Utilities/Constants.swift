@@ -17,6 +17,7 @@ enum Constants {
         static let adminReset = "/admin/reset"
 
         static func poke(_ userId: String) -> String { "/poke/\(userId)" }
+        static func deleteMatch(_ matchId: String) -> String { "/matches/\(matchId)" }
         static func messages(_ matchId: String) -> String { "/matches/\(matchId)/messages" }
         static func typing(_ matchId: String) -> String { "/matches/\(matchId)/typing" }
         static func reactions(_ matchId: String, _ messageId: String) -> String {

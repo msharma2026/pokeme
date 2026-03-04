@@ -11,6 +11,7 @@ struct MatchesListView: View {
     @StateObject private var viewModel = MatchViewModel()
     @State private var selectedMatch: Match?
     @State private var selectedGroupChat: Meetup?
+    @State private var selectedProfileMatch: Match?
     @State private var animateEmpty = false
     @AppStorage("matchesSelectedFilter") private var selectedFilterRaw: String = MatchFilter.all.rawValue
 
@@ -70,7 +71,36 @@ struct MatchesListView: View {
                                 Section("1-on-1") {
                                     ForEach(filteredMatches) { match in
                                         Button(action: { selectedMatch = match }) {
-                                            MatchRow(match: match, currentUserId: currentUserId)
+                                            MatchRow(
+                                                match: match,
+                                                currentUserId: currentUserId,
+                                                onAvatarTap: { selectedProfileMatch = match }
+                                            )
+                                        }
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                            Button(role: .destructive) {
+                                                Task { await viewModel.deleteMatch(token: authViewModel.getToken(), matchId: match.id) }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
+                                            Button {
+                                                selectedProfileMatch = match
+                                            } label: {
+                                                Label("Profile", systemImage: "person.circle")
+                                            }
+                                            .tint(.blue)
+                                        }
+                                        .contextMenu {
+                                            Button {
+                                                selectedProfileMatch = match
+                                            } label: {
+                                                Label("View Profile", systemImage: "person.circle")
+                                            }
+                                            Button(role: .destructive) {
+                                                Task { await viewModel.deleteMatch(token: authViewModel.getToken(), matchId: match.id) }
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
                                         }
                                     }
                                 }
@@ -111,6 +141,9 @@ struct MatchesListView: View {
             .sheet(item: $selectedGroupChat) { meetup in
                 MeetupChatView(meetupId: meetup.id, meetupTitle: meetup.title)
                     .environmentObject(authViewModel)
+            }
+            .sheet(item: $selectedProfileMatch) { match in
+                PartnerProfileSheet(match: match)
             }
         }
     }
@@ -237,6 +270,7 @@ struct MeetupGroupChatRow: View {
 struct MatchRow: View {
     let match: Match
     let currentUserId: String
+    var onAvatarTap: (() -> Void)? = nil
 
     /// True when the partner sent the most recent message (proxy for "unread")
     private var hasUnread: Bool {
@@ -246,7 +280,8 @@ struct MatchRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar
+            // Avatar (tappable to view profile)
+            Button(action: { onAvatarTap?() }) {
             ZStack(alignment: .topTrailing) {
                 ZStack {
                     Circle()
@@ -286,6 +321,8 @@ struct MatchRow: View {
                         .offset(x: 2, y: -2)
                 }
             }
+            } // end avatar Button
+            .buttonStyle(.plain)
 
             // Text content
             VStack(alignment: .leading, spacing: 3) {
@@ -373,3 +410,112 @@ struct MatchRow: View {
         return df.string(from: date)
     }
 }
+
+// MARK: - Partner Profile Sheet
+
+struct PartnerProfileSheet: View {
+    let match: Match
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Header
+                    ZStack {
+                        LinearGradient(
+                            colors: [.orange, .pink, .purple],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .frame(height: 200)
+
+                        VStack(spacing: 12) {
+                            // Avatar
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white.opacity(0.2))
+                                    .frame(width: 96, height: 96)
+
+                                if let pictureData = match.partnerProfilePicture,
+                                   let imageData = Data(base64Encoded: pictureData.replacingOccurrences(of: "data:image/jpeg;base64,", with: "")),
+                                   let uiImage = UIImage(data: imageData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 90, height: 90)
+                                        .clipShape(Circle())
+                                } else {
+                                    Text(match.partnerName.prefix(1).uppercased())
+                                        .font(.system(size: 38, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                }
+                            }
+
+                            Text(match.partnerName)
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+
+                            if let year = match.partnerCollegeYear {
+                                Text(year)
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(10)
+                            }
+                        }
+                        .padding(.top, 16)
+                    }
+
+                    // Sports section
+                    if let sports = match.partnerSports, !sports.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Sports", systemImage: "figure.run")
+                                .font(.headline)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(sports) { sport in
+                                        HStack(spacing: 4) {
+                                            Text(sport.sport)
+                                                .fontWeight(.medium)
+                                            Text(sport.skillLevel)
+                                                .font(.caption)
+                                                .foregroundColor(.orange.opacity(0.7))
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.orange.opacity(0.12))
+                                        .foregroundColor(.orange)
+                                        .cornerRadius(14)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                    }
+                }
+                .padding(.bottom, 32)
+            }
+            .ignoresSafeArea(edges: .top)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundColor(.orange)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+}
+

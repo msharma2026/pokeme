@@ -42,6 +42,14 @@ class MatchService {
         )
     }
 
+    func deleteMatch(token: String, matchId: String) async throws {
+        let _: ResetResponse = try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.deleteMatch(matchId),
+            method: .DELETE,
+            token: token
+        )
+    }
+
     func resetTestData(token: String) async throws -> ResetResponse {
         return try await NetworkService.shared.request(
             endpoint: Constants.Endpoints.adminReset,
