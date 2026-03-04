@@ -63,6 +63,10 @@ struct HomeView: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 50)
                 .onEnded { value in
+                    let screenWidth = UIScreen.main.bounds.width
+                    let edgeZone: CGFloat = 30
+                    let startX = value.startLocation.x
+                    guard startX < edgeZone || startX > screenWidth - edgeZone else { return }
                     let h = value.translation.width
                     let v = value.translation.height
                     guard abs(h) > abs(v) * 1.5 else { return }

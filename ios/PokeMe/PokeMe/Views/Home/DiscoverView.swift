@@ -30,11 +30,27 @@ struct DiscoverView: View {
                 }
                 .padding(.vertical, 8)
 
-                stateContent
+                ZStack(alignment: .top) {
+                    stateContent
+
+                    if viewModel.newProfilesAvailable {
+                        newPeoplePill
+                    }
+                }
+                .animation(.spring(response: 0.4), value: viewModel.newProfilesAvailable)
+            }
+            .refreshable {
+                await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
             }
             .navigationTitle("Discover")
             .task {
-                await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
+                if viewModel.profiles.isEmpty {
+                    await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
+                }
+                viewModel.startBackgroundPolling(token: authViewModel.getToken(), currentUser: authViewModel.user)
+            }
+            .onDisappear {
+                viewModel.stopBackgroundPolling()
             }
             .onChange(of: authViewModel.user?.id) { _ in
                 Task {
@@ -49,6 +65,32 @@ struct DiscoverView: View {
                 }
             }
         }
+    }
+
+    private var newPeoplePill: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.35)) {
+                viewModel.applyPendingProfiles()
+            }
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("New people available")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(
+                LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+            )
+            .foregroundColor(.white)
+            .cornerRadius(25)
+            .shadow(color: .orange.opacity(0.4), radius: 8, x: 0, y: 4)
+        }
+        .padding(.top, 8)
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     @ViewBuilder

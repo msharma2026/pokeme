@@ -12,6 +12,68 @@ class DiscoverViewModel: ObservableObject {
     @Published var matchedUser: User?
     @Published var matchedMatch: Match?
     @Published var selectedSport: String?
+    @Published var newProfilesAvailable = false
+
+    private var hasLoadedOnce = false
+    private var pendingProfiles: [User] = []
+    private var backgroundPollTimer: Timer?
+    private let cacheKey = "discoverProfilesCache"
+
+    init() {
+        if let data = UserDefaults.standard.data(forKey: "discoverProfilesCache"),
+           let cached = try? JSONDecoder().decode([User].self, from: data),
+           !cached.isEmpty {
+            profiles = cached
+            hasLoadedOnce = true
+        }
+    }
+
+    private func saveToCache() {
+        guard let data = try? JSONEncoder().encode(profiles) else { return }
+        UserDefaults.standard.set(data, forKey: cacheKey)
+    }
+
+    func applyPendingProfiles() {
+        profiles = pendingProfiles
+        pendingProfiles = []
+        newProfilesAvailable = false
+        saveToCache()
+    }
+
+    func startBackgroundPolling(token: String?, currentUser: User? = nil) {
+        stopBackgroundPolling()
+        let timer = Timer(timeInterval: 30.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.backgroundFetch(token: token, currentUser: currentUser)
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        backgroundPollTimer = timer
+    }
+
+    func stopBackgroundPolling() {
+        backgroundPollTimer?.invalidate()
+        backgroundPollTimer = nil
+    }
+
+    func backgroundFetch(token: String?, currentUser: User? = nil) async {
+        guard let token, hasLoadedOnce, !isLoading else { return }
+        do {
+            var viewer = currentUser
+            if viewer == nil { viewer = try? await AuthService.shared.getMe(token: token) }
+            let response = try await MatchService.shared.discover(token: token, sport: selectedSport)
+            let enriched = enrichProfilesWithRecommendations(response.profiles, viewer: viewer)
+                .sorted { ($0.recommendationScore ?? 0) > ($1.recommendationScore ?? 0) }
+            let currentIds = Set(profiles.map { $0.id })
+            let newIds = Set(enriched.map { $0.id })
+            if !newIds.subtracting(currentIds).isEmpty {
+                pendingProfiles = enriched
+                newProfilesAvailable = true
+            }
+        } catch {
+            // Silent — background fetches never surface errors
+        }
+    }
 
     func fetchProfiles(token: String?, currentUser: User? = nil) async {
         guard let token = token else {
@@ -19,7 +81,7 @@ class DiscoverViewModel: ObservableObject {
             return
         }
 
-        isLoading = true
+        isLoading = profiles.isEmpty
         errorMessage = nil
 
         do {
@@ -34,6 +96,10 @@ class DiscoverViewModel: ObservableObject {
                 ($0.recommendationScore ?? 0) > ($1.recommendationScore ?? 0)
             }
             errorMessage = nil
+            hasLoadedOnce = true
+            newProfilesAvailable = false
+            pendingProfiles = []
+            saveToCache()
         } catch let error as NetworkError {
             errorMessage = error.errorDescription
         } catch {
