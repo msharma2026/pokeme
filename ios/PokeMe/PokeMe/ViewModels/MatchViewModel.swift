@@ -7,6 +7,7 @@ class MatchViewModel: ObservableObject {
     @Published var groupChats: [Meetup] = []
     @Published var deletedMatches: [Match] = []
     @Published var deletedMeetups: [Meetup] = []
+    @Published var blockedMatches: [Match] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -15,6 +16,7 @@ class MatchViewModel: ObservableObject {
     private let seenMatchIdsKey = "seenMatchIds"
     private let deletedMatchesKey = "deletedMatchesArchive"
     private let deletedMeetupsKey = "deletedMeetupsArchive"
+    private let blockedMatchesKey = "blockedMatchesArchive"
 
     init() {
         let saved = UserDefaults.standard.stringArray(forKey: "seenMatchIds") ?? []
@@ -27,6 +29,10 @@ class MatchViewModel: ObservableObject {
            let items = try? JSONDecoder().decode([Meetup].self, from: data) {
             deletedMeetups = items
         }
+        if let data = UserDefaults.standard.data(forKey: blockedMatchesKey),
+           let items = try? JSONDecoder().decode([Match].self, from: data) {
+            blockedMatches = items
+        }
     }
 
     private func saveDeletedMatches() {
@@ -37,6 +43,11 @@ class MatchViewModel: ObservableObject {
     private func saveDeletedMeetups() {
         guard let data = try? JSONEncoder().encode(deletedMeetups) else { return }
         UserDefaults.standard.set(data, forKey: deletedMeetupsKey)
+    }
+
+    private func saveBlockedMatches() {
+        guard let data = try? JSONEncoder().encode(blockedMatches) else { return }
+        UserDefaults.standard.set(data, forKey: blockedMatchesKey)
     }
 
     func fetchMatches(token: String?) async {
@@ -116,6 +127,25 @@ class MatchViewModel: ObservableObject {
         saveDeletedMeetups()
     }
 
+    func blockMatch(token: String?, matchId: String) async {
+        if let match = matches.first(where: { $0.id == matchId }) {
+            if !blockedMatches.contains(where: { $0.id == matchId }) {
+                blockedMatches.insert(match, at: 0)
+                saveBlockedMatches()
+            }
+        }
+        matches.removeAll { $0.id == matchId }
+        deletedMatches.removeAll { $0.id == matchId }
+        saveDeletedMatches()
+        guard let token = token else { return }
+        try? await MatchService.shared.deleteMatch(token: token, matchId: matchId)
+    }
+
+    func unblockMatch(id: String) {
+        blockedMatches.removeAll { $0.id == id }
+        saveBlockedMatches()
+    }
+
     func restoreMatch(id: String) {
         guard let match = deletedMatches.first(where: { $0.id == id }) else { return }
         deletedMatches.removeAll { $0.id == id }
@@ -137,8 +167,10 @@ class MatchViewModel: ObservableObject {
     func clearTrash() {
         deletedMatches = []
         deletedMeetups = []
+        blockedMatches = []
         saveDeletedMatches()
         saveDeletedMeetups()
+        saveBlockedMatches()
     }
 
     func startPolling(token: String?) {

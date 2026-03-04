@@ -16,6 +16,7 @@ struct MatchesListView: View {
     @State private var selectedGroupMembers: Meetup?
     @State private var matchPendingDelete: Match?
     @State private var meetupPendingLeave: Meetup?
+    @State private var matchPendingBlock: Match?
     @State private var animateEmpty = false
     @AppStorage("matchesSelectedFilter") private var selectedFilterRaw: String = MatchFilter.all.rawValue
 
@@ -37,7 +38,7 @@ struct MatchesListView: View {
     }
 
     private var isTrashEmpty: Bool {
-        viewModel.deletedMatches.isEmpty && viewModel.deletedMeetups.isEmpty
+        viewModel.deletedMatches.isEmpty && viewModel.deletedMeetups.isEmpty && viewModel.blockedMatches.isEmpty
     }
 
     var body: some View {
@@ -123,6 +124,12 @@ struct MatchesListView: View {
                                                 Label("Delete", systemImage: "trash")
                                             }
                                             Button {
+                                                matchPendingBlock = match
+                                            } label: {
+                                                Label("Block", systemImage: "hand.raised")
+                                            }
+                                            .tint(.indigo)
+                                            Button {
                                                 selectedProfileMatch = match
                                             } label: {
                                                 Label("Profile", systemImage: "person.circle")
@@ -134,6 +141,11 @@ struct MatchesListView: View {
                                                 selectedProfileMatch = match
                                             } label: {
                                                 Label("View Profile", systemImage: "person.circle")
+                                            }
+                                            Button {
+                                                matchPendingBlock = match
+                                            } label: {
+                                                Label("Block", systemImage: "hand.raised")
                                             }
                                             Button(role: .destructive) {
                                                 matchPendingDelete = match
@@ -225,6 +237,25 @@ struct MatchesListView: View {
                     Text("\(action) \"\(meetup.title)\" is permanent and can't be undone.")
                 }
             }
+            .alert(
+                "Block \(matchPendingBlock?.partnerName ?? "User")?",
+                isPresented: Binding(
+                    get: { matchPendingBlock != nil },
+                    set: { if !$0 { matchPendingBlock = nil } }
+                )
+            ) {
+                Button("Block", role: .destructive) {
+                    if let match = matchPendingBlock {
+                        Task { await viewModel.blockMatch(token: authViewModel.getToken(), matchId: match.id) }
+                    }
+                    matchPendingBlock = nil
+                }
+                Button("Cancel", role: .cancel) { matchPendingBlock = nil }
+            } message: {
+                if let match = matchPendingBlock {
+                    Text("Block \(match.partnerName)? They will be moved to your blocked list and won't be able to contact you.")
+                }
+            }
         }
     }
 
@@ -308,6 +339,29 @@ struct MatchesListView: View {
                                             viewModel.permanentlyDeleteMeetup(id: meetup.id)
                                         } label: {
                                             Label("Remove Permanently", systemImage: "xmark.bin")
+                                        }
+                                    }
+                            }
+                        }
+                    }
+
+                    if !viewModel.blockedMatches.isEmpty {
+                        Section("Blocked") {
+                            ForEach(viewModel.blockedMatches) { match in
+                                BlockedMatchRow(match: match)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button {
+                                            viewModel.unblockMatch(id: match.id)
+                                        } label: {
+                                            Label("Unblock", systemImage: "hand.raised.slash")
+                                        }
+                                        .tint(.green)
+                                    }
+                                    .contextMenu {
+                                        Button {
+                                            viewModel.unblockMatch(id: match.id)
+                                        } label: {
+                                            Label("Unblock", systemImage: "hand.raised.slash")
                                         }
                                     }
                             }
@@ -450,6 +504,47 @@ struct DeletedMeetupRow: View {
             Image(systemName: "trash")
                 .font(.caption)
                 .foregroundColor(Color(.tertiaryLabel))
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct BlockedMatchRow: View {
+    let match: Match
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(.systemGray4))
+                    .frame(width: 46, height: 46)
+                if let pictureData = match.partnerProfilePicture,
+                   let imageData = Data(base64Encoded: pictureData.replacingOccurrences(of: "data:image/jpeg;base64,", with: "")),
+                   let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 42, height: 42)
+                        .clipShape(Circle())
+                        .grayscale(1)
+                } else {
+                    Text(match.partnerName.prefix(1).uppercased())
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(match.partnerName)
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text("Blocked")
+                    .font(.caption)
+                    .foregroundColor(.red.opacity(0.7))
+            }
+            Spacer()
+            Image(systemName: "hand.raised.fill")
+                .font(.caption)
+                .foregroundColor(.red.opacity(0.5))
         }
         .padding(.vertical, 4)
     }
