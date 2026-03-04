@@ -5,7 +5,7 @@ struct HomeView: View {
     @StateObject private var pokesViewModel = PokesViewModel()
     @StateObject private var matchViewModel = MatchViewModel()
     @StateObject private var messageNotificationPoller = MessageNotificationPoller()
-    @State private var selectedTab = 1  // default to Discover
+    @State private var selectedTab = 3  // default to Matches
 
     /// Matches where partner sent the last message — proxy for unread chats
     private var unreadMatchCount: Int {
