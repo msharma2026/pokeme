@@ -46,6 +46,14 @@ struct SettingsView: View {
 
                 // Account
                 Section {
+                    NavigationLink(destination: BlockedUsersView()) {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                                .foregroundColor(.indigo)
+                            Text("Blocked Users")
+                                .foregroundColor(.primary)
+                        }
+                    }
                     Button(action: {
                         authViewModel.logout()
                     }) {
@@ -151,6 +159,98 @@ struct SettingsView: View {
             resetResult = "Error: \(error.localizedDescription)"
         }
         isResetting = false
+    }
+}
+
+struct BlockedUsersView: View {
+    @State private var blockedMatches: [Match] = []
+    private let blockedMatchesKey = "blockedMatchesArchive"
+
+    var body: some View {
+        Group {
+            if blockedMatches.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "hand.raised.slash")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary.opacity(0.4))
+                    Text("No blocked users")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            } else {
+                List {
+                    ForEach(blockedMatches) { match in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(.systemGray4))
+                                    .frame(width: 46, height: 46)
+                                if let data = match.partnerProfilePicture,
+                                   let imageData = Data(base64Encoded: data.replacingOccurrences(of: "data:image/jpeg;base64,", with: "")),
+                                   let uiImage = UIImage(data: imageData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 42, height: 42)
+                                        .clipShape(Circle())
+                                        .grayscale(1)
+                                } else {
+                                    Text(match.partnerName.prefix(1).uppercased())
+                                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(match.partnerName)
+                                    .font(.headline)
+                                Text("Blocked")
+                                    .font(.caption)
+                                    .foregroundColor(.red.opacity(0.7))
+                            }
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button {
+                                unblock(id: match.id)
+                            } label: {
+                                Label("Unblock", systemImage: "hand.raised.slash")
+                            }
+                            .tint(.green)
+                        }
+                        .contextMenu {
+                            Button {
+                                unblock(id: match.id)
+                            } label: {
+                                Label("Unblock", systemImage: "hand.raised.slash")
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+        .navigationTitle("Blocked Users")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { loadBlocked() }
+    }
+
+    private func loadBlocked() {
+        if let data = UserDefaults.standard.data(forKey: blockedMatchesKey),
+           let items = try? JSONDecoder().decode([Match].self, from: data) {
+            blockedMatches = items
+        }
+    }
+
+    private func unblock(id: String) {
+        withAnimation {
+            blockedMatches.removeAll { $0.id == id }
+        }
+        if let data = try? JSONEncoder().encode(blockedMatches) {
+            UserDefaults.standard.set(data, forKey: blockedMatchesKey)
+        }
     }
 }
 
