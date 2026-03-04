@@ -5,16 +5,38 @@ import SwiftUI
 class MatchViewModel: ObservableObject {
     @Published var matches: [Match] = []
     @Published var groupChats: [Meetup] = []
+    @Published var deletedMatches: [Match] = []
+    @Published var deletedMeetups: [Meetup] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
     private var pollTimer: Timer?
     private var previousMatchIds: Set<String> = []
     private let seenMatchIdsKey = "seenMatchIds"
+    private let deletedMatchesKey = "deletedMatchesArchive"
+    private let deletedMeetupsKey = "deletedMeetupsArchive"
 
     init() {
         let saved = UserDefaults.standard.stringArray(forKey: "seenMatchIds") ?? []
         previousMatchIds = Set(saved)
+        if let data = UserDefaults.standard.data(forKey: deletedMatchesKey),
+           let items = try? JSONDecoder().decode([Match].self, from: data) {
+            deletedMatches = items
+        }
+        if let data = UserDefaults.standard.data(forKey: deletedMeetupsKey),
+           let items = try? JSONDecoder().decode([Meetup].self, from: data) {
+            deletedMeetups = items
+        }
+    }
+
+    private func saveDeletedMatches() {
+        guard let data = try? JSONEncoder().encode(deletedMatches) else { return }
+        UserDefaults.standard.set(data, forKey: deletedMatchesKey)
+    }
+
+    private func saveDeletedMeetups() {
+        guard let data = try? JSONEncoder().encode(deletedMeetups) else { return }
+        UserDefaults.standard.set(data, forKey: deletedMeetupsKey)
     }
 
     func fetchMatches(token: String?) async {
@@ -61,16 +83,62 @@ class MatchViewModel: ObservableObject {
     }
 
     func deleteMatch(token: String?, matchId: String) async {
-        // Optimistic local removal
+        if let match = matches.first(where: { $0.id == matchId }) {
+            if !deletedMatches.contains(where: { $0.id == matchId }) {
+                deletedMatches.insert(match, at: 0)
+                saveDeletedMatches()
+            }
+        }
         matches.removeAll { $0.id == matchId }
         guard let token = token else { return }
         try? await MatchService.shared.deleteMatch(token: token, matchId: matchId)
     }
 
     func leaveMeetup(token: String?, meetupId: String) async {
+        if let meetup = groupChats.first(where: { $0.id == meetupId }) {
+            if !deletedMeetups.contains(where: { $0.id == meetupId }) {
+                deletedMeetups.insert(meetup, at: 0)
+                saveDeletedMeetups()
+            }
+        }
         groupChats.removeAll { $0.id == meetupId }
         guard let token = token else { return }
         try? await MeetupService.shared.leaveMeetup(token: token, meetupId: meetupId)
+    }
+
+    func permanentlyDeleteMatch(id: String) {
+        deletedMatches.removeAll { $0.id == id }
+        saveDeletedMatches()
+    }
+
+    func permanentlyDeleteMeetup(id: String) {
+        deletedMeetups.removeAll { $0.id == id }
+        saveDeletedMeetups()
+    }
+
+    func restoreMatch(id: String) {
+        guard let match = deletedMatches.first(where: { $0.id == id }) else { return }
+        deletedMatches.removeAll { $0.id == id }
+        saveDeletedMatches()
+        if !matches.contains(where: { $0.id == id }) {
+            matches.insert(match, at: 0)
+        }
+    }
+
+    func restoreMeetup(id: String) {
+        guard let meetup = deletedMeetups.first(where: { $0.id == id }) else { return }
+        deletedMeetups.removeAll { $0.id == id }
+        saveDeletedMeetups()
+        if !groupChats.contains(where: { $0.id == id }) {
+            groupChats.insert(meetup, at: 0)
+        }
+    }
+
+    func clearTrash() {
+        deletedMatches = []
+        deletedMeetups = []
+        saveDeletedMatches()
+        saveDeletedMeetups()
     }
 
     func startPolling(token: String?) {

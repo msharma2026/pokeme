@@ -4,6 +4,7 @@ private enum MatchFilter: String, CaseIterable {
     case all = "All"
     case oneOnOne = "1-on-1"
     case group = "Group"
+    case deleted = "Deleted"
 }
 
 struct MatchesListView: View {
@@ -28,11 +29,15 @@ struct MatchesListView: View {
     private var isEmpty: Bool { viewModel.matches.isEmpty && viewModel.groupChats.isEmpty }
 
     private var filteredMatches: [Match] {
-        selectedFilter == .group ? [] : viewModel.matches
+        (selectedFilter == .group || selectedFilter == .deleted) ? [] : viewModel.matches
     }
 
     private var filteredGroupChats: [Meetup] {
-        selectedFilter == .oneOnOne ? [] : viewModel.groupChats
+        (selectedFilter == .oneOnOne || selectedFilter == .deleted) ? [] : viewModel.groupChats
+    }
+
+    private var isTrashEmpty: Bool {
+        viewModel.deletedMatches.isEmpty && viewModel.deletedMeetups.isEmpty
     }
 
     var body: some View {
@@ -43,7 +48,7 @@ struct MatchesListView: View {
                         ProgressView().tint(.orange)
                         Text("Loading matches...").foregroundColor(.secondary)
                     }
-                } else if isEmpty {
+                } else if isEmpty && selectedFilter != .deleted {
                     emptyState
                 } else {
                     VStack(spacing: 0) {
@@ -57,6 +62,9 @@ struct MatchesListView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
 
+                        if selectedFilter == .deleted {
+                            deletedTab
+                        } else {
                         List {
                             // Meetup group chats
                             if !filteredGroupChats.isEmpty {
@@ -149,6 +157,7 @@ struct MatchesListView: View {
                             }
                         }
                         .listStyle(.plain)
+                        } // end else (non-deleted list)
                     }
                 }
             }
@@ -219,6 +228,110 @@ struct MatchesListView: View {
         }
     }
 
+    @State private var showClearTrashConfirm = false
+
+    // MARK: - Deleted Tab
+
+    private var deletedTab: some View {
+        Group {
+            if isTrashEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "trash")
+                        .font(.system(size: 52))
+                        .foregroundColor(.secondary.opacity(0.4))
+                    Text("Trash is empty")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                List {
+                    if !viewModel.deletedMatches.isEmpty {
+                        Section("Deleted 1-on-1") {
+                            ForEach(viewModel.deletedMatches) { match in
+                                DeletedMatchRow(match: match)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            viewModel.permanentlyDeleteMatch(id: match.id)
+                                        } label: {
+                                            Label("Remove", systemImage: "xmark.bin")
+                                        }
+                                        Button {
+                                            viewModel.restoreMatch(id: match.id)
+                                        } label: {
+                                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                        }
+                                        .tint(.green)
+                                    }
+                                    .contextMenu {
+                                        Button {
+                                            viewModel.restoreMatch(id: match.id)
+                                        } label: {
+                                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                        }
+                                        Button(role: .destructive) {
+                                            viewModel.permanentlyDeleteMatch(id: match.id)
+                                        } label: {
+                                            Label("Remove Permanently", systemImage: "xmark.bin")
+                                        }
+                                    }
+                            }
+                        }
+                    }
+
+                    if !viewModel.deletedMeetups.isEmpty {
+                        Section("Left Group Chats") {
+                            ForEach(viewModel.deletedMeetups) { meetup in
+                                DeletedMeetupRow(meetup: meetup)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            viewModel.permanentlyDeleteMeetup(id: meetup.id)
+                                        } label: {
+                                            Label("Remove", systemImage: "xmark.bin")
+                                        }
+                                        Button {
+                                            viewModel.restoreMeetup(id: meetup.id)
+                                        } label: {
+                                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                        }
+                                        .tint(.green)
+                                    }
+                                    .contextMenu {
+                                        Button {
+                                            viewModel.restoreMeetup(id: meetup.id)
+                                        } label: {
+                                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                        }
+                                        Button(role: .destructive) {
+                                            viewModel.permanentlyDeleteMeetup(id: meetup.id)
+                                        } label: {
+                                            Label("Remove Permanently", systemImage: "xmark.bin")
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Empty Trash") { showClearTrashConfirm = true }
+                            .foregroundColor(.red)
+                            .font(.subheadline)
+                    }
+                }
+                .alert("Empty Trash?", isPresented: $showClearTrashConfirm) {
+                    Button("Empty Trash", role: .destructive) { viewModel.clearTrash() }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Permanently remove all deleted chats. This can't be undone.")
+                }
+            }
+        }
+    }
+
     private var emptyState: some View {
         VStack(spacing: 20) {
             ZStack {
@@ -265,6 +378,80 @@ struct MatchesListView: View {
         }
         .padding()
         .onAppear { animateEmpty = true }
+    }
+}
+
+// MARK: - Deleted Item Rows
+
+struct DeletedMatchRow: View {
+    let match: Match
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(.systemGray4))
+                    .frame(width: 46, height: 46)
+                if let pictureData = match.partnerProfilePicture,
+                   let imageData = Data(base64Encoded: pictureData.replacingOccurrences(of: "data:image/jpeg;base64,", with: "")),
+                   let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 42, height: 42)
+                        .clipShape(Circle())
+                        .grayscale(1)
+                } else {
+                    Text(match.partnerName.prefix(1).uppercased())
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(match.partnerName)
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text("1-on-1 match")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Image(systemName: "trash")
+                .font(.caption)
+                .foregroundColor(Color(.tertiaryLabel))
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct DeletedMeetupRow: View {
+    let meetup: Meetup
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(.systemGray4))
+                    .frame(width: 46, height: 46)
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(meetup.title)
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                Text("Group · \(meetup.sport)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Image(systemName: "trash")
+                .font(.caption)
+                .foregroundColor(Color(.tertiaryLabel))
+        }
+        .padding(.vertical, 4)
     }
 }
 
