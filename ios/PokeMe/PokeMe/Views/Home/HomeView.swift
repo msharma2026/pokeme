@@ -60,6 +60,18 @@ struct HomeView: View {
                 .tag(4)
         }
         .tint(.orange)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 50)
+                .onEnded { value in
+                    let h = value.translation.width
+                    let v = value.translation.height
+                    guard abs(h) > abs(v) * 1.5 else { return }
+                    withAnimation {
+                        if h < 0 { selectedTab = min(selectedTab + 1, 4) }
+                        else      { selectedTab = max(selectedTab - 1, 0) }
+                    }
+                }
+        )
         .task {
             await matchViewModel.fetchMatches(token: authViewModel.getToken())
         }
