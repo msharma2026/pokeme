@@ -54,7 +54,7 @@ class MeetupViewModel: ObservableObject {
 
     func startPolling(token: String?, currentUserId: String?) {
         stopPolling()
-        let timer = Timer(timeInterval: 20.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 5.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.fetchMeetups(token: token, currentUserId: currentUserId)
             }

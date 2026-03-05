@@ -5,6 +5,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var pokesViewModel = PokesViewModel()
     @StateObject private var matchViewModel = MatchViewModel()
+    @StateObject private var meetupViewModel = MeetupViewModel()
     @State private var selectedTab = 0  // default to Meetups
     @State private var dragOffset: CGFloat = 0
 
@@ -24,6 +25,7 @@ struct HomeView: View {
                 HStack(spacing: 0) {
                     MeetupsListView()
                         .environmentObject(authViewModel)
+                        .environmentObject(meetupViewModel)
                         .frame(width: w)
                     DiscoverView()
                         .environmentObject(authViewModel)
@@ -92,12 +94,15 @@ struct HomeView: View {
         .task {
             await matchViewModel.fetchMatches(token: authViewModel.getToken())
             await matchViewModel.fetchGroupChats(token: authViewModel.getToken())
+            await meetupViewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
         }
         .onAppear {
             matchViewModel.startPolling(token: authViewModel.getToken())
+            meetupViewModel.startPolling(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
         }
         .onDisappear {
             matchViewModel.stopPolling()
+            meetupViewModel.stopPolling()
         }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == 0 {
@@ -106,10 +111,11 @@ struct HomeView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                // Restart pollers after app returns from background
                 matchViewModel.startPolling(token: authViewModel.getToken())
+                meetupViewModel.startPolling(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
             } else if phase == .background {
                 matchViewModel.stopPolling()
+                meetupViewModel.stopPolling()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToDiscover"))) { _ in
