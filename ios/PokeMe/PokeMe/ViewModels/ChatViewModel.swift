@@ -14,6 +14,7 @@ class ChatViewModel: ObservableObject {
     private var currentUserId: String?
     private var matchId: String?
     private var pollTimer: Timer?
+    private var latestMessageTimestamp: String?
 
     // Typing indicator debounce
     private var lastTypingSentAt: Date?
@@ -33,16 +34,32 @@ class ChatViewModel: ObservableObject {
         }
 
         isLoading = messages.isEmpty
+        let since = latestMessageTimestamp
 
         do {
-            let response = try await MessageService.shared.getMessages(token: token, matchId: matchId)
-            var updatedMessages = response.messages
-            for i in 0..<updatedMessages.count {
-                updatedMessages[i].isFromCurrentUser = updatedMessages[i].senderId == currentUserId
-            }
-            messages = updatedMessages
+            let response = try await MessageService.shared.getMessages(token: token, matchId: matchId, since: since)
             partnerIsTyping = response.partnerIsTyping ?? false
             errorMessage = nil
+
+            if since == nil {
+                // Initial load — replace all messages
+                var all = response.messages
+                for i in 0..<all.count {
+                    all[i].isFromCurrentUser = all[i].senderId == currentUserId
+                }
+                messages = all
+            } else if !response.messages.isEmpty {
+                // Poll — append only new messages
+                var newMsgs = response.messages
+                for i in 0..<newMsgs.count {
+                    newMsgs[i].isFromCurrentUser = newMsgs[i].senderId == currentUserId
+                }
+                let existingIds = Set(messages.map { $0.id })
+                messages.append(contentsOf: newMsgs.filter { !existingIds.contains($0.id) })
+            }
+
+            // Track the latest timestamp for the next poll
+            latestMessageTimestamp = messages.compactMap { $0.createdAt }.max() ?? latestMessageTimestamp
 
             await markUnreadMessagesAsRead(token: token)
         } catch let error as NetworkError {

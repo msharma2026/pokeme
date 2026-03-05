@@ -5,9 +5,9 @@ class MessageService {
 
     private init() {}
 
-    func getMessages(token: String, matchId: String) async throws -> MessagesResponse {
+    func getMessages(token: String, matchId: String, since: String? = nil) async throws -> MessagesResponse {
         return try await NetworkService.shared.request(
-            endpoint: Constants.Endpoints.messages(matchId),
+            endpoint: Constants.Endpoints.messages(matchId, since: since),
             method: .GET,
             token: token
         )

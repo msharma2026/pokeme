@@ -76,7 +76,7 @@ def meetup_to_dict(entity):
     }
 
 
-def user_to_dict(entity, include_password=False):
+def user_to_dict(entity, include_password=False, include_picture=True):
     """Convert a Datastore user entity to a dictionary."""
     if entity is None:
         return None
@@ -88,13 +88,15 @@ def user_to_dict(entity, include_password=False):
         'displayName': entity.get('displayName'),
         'major': entity.get('major'),
         'bio': entity.get('bio'),
-        'profilePicture': entity.get('profilePicture'),
         'socials': entity.get('socials', {}),
         'sports': entity.get('sports', []),
         'collegeYear': entity.get('collegeYear'),
         'availability': entity.get('availability', {}),
         'createdAt': entity.get('createdAt'),
     }
+
+    if include_picture:
+        result['profilePicture'] = entity.get('profilePicture')
 
     if include_password:
         result['passwordHash'] = entity.get('passwordHash')

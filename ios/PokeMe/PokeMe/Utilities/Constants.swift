@@ -18,7 +18,13 @@ enum Constants {
 
         static func poke(_ userId: String) -> String { "/poke/\(userId)" }
         static func deleteMatch(_ matchId: String) -> String { "/matches/\(matchId)" }
-        static func messages(_ matchId: String) -> String { "/matches/\(matchId)/messages" }
+        static func messages(_ matchId: String, since: String? = nil) -> String {
+            guard let since = since,
+                  let encoded = since.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+                return "/matches/\(matchId)/messages"
+            }
+            return "/matches/\(matchId)/messages?since=\(encoded)"
+        }
         static func typing(_ matchId: String) -> String { "/matches/\(matchId)/typing" }
         static func reactions(_ matchId: String, _ messageId: String) -> String {
             "/matches/\(matchId)/messages/\(messageId)/reactions"

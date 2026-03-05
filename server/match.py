@@ -219,7 +219,7 @@ def get_incoming_pokes():
             'id': p.key.name or str(p.key.id),
             'fromUserId': from_id,
             'createdAt': p.get('createdAt'),
-            'fromUser': user_to_dict(from_user)
+            'fromUser': user_to_dict(from_user, include_picture=False)
         })
 
     pokes.sort(key=lambda x: x.get('createdAt', ''), reverse=True)
@@ -341,7 +341,7 @@ def get_matches():
         for m in q.fetch():
             partner_id = m.get('user2Id') if field == 'user1Id' else m.get('user1Id')
             partner = get_user_by_id(partner_id)
-            pd = user_to_dict(partner) if partner else {}
+            pd = user_to_dict(partner, include_picture=False) if partner else {}
 
             match_id = m.key.name or str(m.key.id)
 
@@ -397,6 +397,8 @@ def get_messages(match_id):
     if not match:
         return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
 
+    since = request.args.get('since')  # ISO8601 timestamp — only return messages after this
+
     client = get_client()
 
     # Messages
@@ -421,6 +423,8 @@ def get_messages(match_id):
 
     messages = []
     for msg in query.fetch():
+        if since and msg.get('createdAt', '') <= since:
+            continue
         msg_id = msg.key.name or str(msg.key.id)
         msg_dict = {
             'id': msg_id,
