@@ -12,6 +12,7 @@ class MatchViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private var pollTimer: Timer?
+    private var meetupPollTimer: Timer?
     private var previousMatchIds: Set<String> = []
     private let seenMatchIdsKey = "seenMatchIds"
     private let deletedMatchesKey = "deletedMatchesArchive"
@@ -82,15 +83,17 @@ class MatchViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
 
-        // Fetch meetup group chats (server already filters to active meetups the user is in)
+        isLoading = false
+    }
+
+    func fetchGroupChats(token: String?) async {
+        guard let token = token else { return }
         do {
             let meetupResponse = try await MeetupService.shared.getMyMeetups(token: token)
             groupChats = meetupResponse.meetups
         } catch {
             // Keep existing groupChats on transient failures so stale data stays visible
         }
-
-        isLoading = false
     }
 
     func deleteMatch(token: String?, matchId: String) async {
@@ -175,17 +178,28 @@ class MatchViewModel: ObservableObject {
 
     func startPolling(token: String?) {
         stopPolling()
-        let timer = Timer(timeInterval: 5.0, repeats: true) { [weak self] _ in
+        let matchTimer = Timer(timeInterval: 5.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.fetchMatches(token: token)
             }
         }
-        RunLoop.main.add(timer, forMode: .common)
-        pollTimer = timer
+        RunLoop.main.add(matchTimer, forMode: .common)
+        pollTimer = matchTimer
+
+        // Group chats change rarely — poll at a much lower rate
+        let meetupTimer = Timer(timeInterval: 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.fetchGroupChats(token: token)
+            }
+        }
+        RunLoop.main.add(meetupTimer, forMode: .common)
+        meetupPollTimer = meetupTimer
     }
 
     func stopPolling() {
         pollTimer?.invalidate()
         pollTimer = nil
+        meetupPollTimer?.invalidate()
+        meetupPollTimer = nil
     }
 }

@@ -5,8 +5,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var pokesViewModel = PokesViewModel()
     @StateObject private var matchViewModel = MatchViewModel()
-    @StateObject private var messageNotificationPoller = MessageNotificationPoller()
-    @State private var selectedTab = 0  // default to Meetups
+@State private var selectedTab = 0  // default to Meetups
     @State private var dragOffset: CGFloat = 0
     @State private var dragCommitted = false
 
@@ -78,13 +77,13 @@ struct HomeView: View {
         }
         .task {
             await matchViewModel.fetchMatches(token: authViewModel.getToken())
+            await matchViewModel.fetchGroupChats(token: authViewModel.getToken())
         }
         .onAppear {
             matchViewModel.startPolling(token: authViewModel.getToken())
         }
         .onDisappear {
             matchViewModel.stopPolling()
-            messageNotificationPoller.stopPolling()
         }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == 0 {
@@ -97,7 +96,6 @@ struct HomeView: View {
                 matchViewModel.startPolling(token: authViewModel.getToken())
             } else if phase == .background {
                 matchViewModel.stopPolling()
-                messageNotificationPoller.stopPolling()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToDiscover"))) { _ in

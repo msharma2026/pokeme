@@ -92,10 +92,11 @@ def discover():
 
         candidate_entities.append(u)
 
-    ranked_candidates = rank_discover_candidates(user, candidate_entities)
+    # Cap candidates before ranking to limit Datastore reads and Claude API cost
+    ranked_candidates = rank_discover_candidates(user, candidate_entities[:50])
 
     profiles = []
-    for ranked in ranked_candidates:
+    for ranked in ranked_candidates[:20]:
         profile = user_to_dict(ranked['candidate'])
         profile['recommendationScore'] = ranked['recommendation']['score']
         profile['recommendationReasons'] = ranked['recommendation']['reasons']
@@ -204,17 +205,22 @@ def get_incoming_pokes():
     poke_query.add_filter('toUserId', '=', user_id)
     incoming_pokes = list(poke_query.fetch())
 
-    # Filter out pokes from matched users, enrich with user data
-    pokes = []
-    for p in incoming_pokes:
-        from_id = p.get('fromUserId')
-        if from_id in matched_ids:
-            continue
+    # Filter out pokes from matched users, then batch-fetch all sender profiles
+    filtered = [p for p in incoming_pokes if p.get('fromUserId') not in matched_ids]
+    from_ids = [p.get('fromUserId') for p in filtered]
+    sender_keys = [client.key('User', uid) for uid in from_ids]
+    sender_entities = client.get_multi(sender_keys) if sender_keys else []
+    sender_map = {
+        (u.key.name or str(u.key.id)): u
+        for u in sender_entities if u
+    }
 
-        from_user = get_user_by_id(from_id)
+    pokes = []
+    for p in filtered:
+        from_id = p.get('fromUserId')
+        from_user = sender_map.get(from_id)
         if not from_user:
             continue
-
         pokes.append({
             'id': p.key.name or str(p.key.id),
             'fromUserId': from_id,
@@ -345,19 +351,31 @@ def get_matches():
 
             match_id = m.key.name or str(m.key.id)
 
-            # Get last message
-            msg_query = client.query(kind='Message')
-            msg_query.add_filter('matchId', '=', match_id)
-            msgs = list(msg_query.fetch())
-            msgs.sort(key=lambda x: x.get('createdAt', ''))
+            # Fast path: read lastMessage cached on the Match entity
             last_message = None
-            if msgs:
-                last = msgs[-1]
+            if m.get('lastMessageCreatedAt'):
                 last_message = {
-                    'text': last.get('text'),
-                    'senderId': last.get('senderId'),
-                    'createdAt': last.get('createdAt')
+                    'text': m.get('lastMessageText'),
+                    'senderId': m.get('lastMessageSenderId'),
+                    'createdAt': m.get('lastMessageCreatedAt')
                 }
+            else:
+                # Slow path fallback for matches that predate this optimisation;
+                # backfills the cache so the slow path only runs once per match.
+                msg_query = client.query(kind='Message')
+                msg_query.add_filter('matchId', '=', match_id)
+                msgs = sorted(msg_query.fetch(), key=lambda x: x.get('createdAt', ''))
+                if msgs:
+                    last = msgs[-1]
+                    last_message = {
+                        'text': last.get('text'),
+                        'senderId': last.get('senderId'),
+                        'createdAt': last.get('createdAt')
+                    }
+                    m['lastMessageText'] = last_message['text']
+                    m['lastMessageSenderId'] = last_message['senderId']
+                    m['lastMessageCreatedAt'] = last_message['createdAt']
+                    client.put(m)
 
             matches.append({
                 'id': match_id,
@@ -501,7 +519,13 @@ def send_message(match_id):
         'readBy': [user_id],
         'createdAt': created_at
     })
-    client.put(entity)
+
+    # Cache lastMessage on the Match entity so get_matches avoids a message scan
+    match['lastMessageText'] = text
+    match['lastMessageSenderId'] = user_id
+    match['lastMessageCreatedAt'] = created_at
+
+    client.put_multi([entity, match])
 
     return jsonify({
         'success': True,
@@ -610,22 +634,25 @@ def mark_messages_read(match_id):
         return error_response('VALIDATION_ERROR', 'messageIds is required')
 
     client = get_client()
-    updated_count = 0
 
-    for msg_id in message_ids:
-        msg_key = client.key('Message', msg_id)
-        message = client.get(msg_key)
+    keys = [client.key('Message', msg_id) for msg_id in message_ids]
+    fetched = client.get_multi(keys)
+
+    to_update = []
+    for message in fetched:
         if message and message.get('matchId') == match_id:
             read_by = message.get('readBy', [])
             if user_id not in read_by:
                 read_by.append(user_id)
                 message['readBy'] = read_by
-                client.put(message)
-                updated_count += 1
+                to_update.append(message)
+
+    if to_update:
+        client.put_multi(to_update)
 
     return jsonify({
         'success': True,
-        'data': {'updatedCount': updated_count}
+        'data': {'updatedCount': len(to_update)}
     })
 
 
@@ -787,12 +814,13 @@ def create_session(match_id):
     # Auto-create system message in chat
     proposer = get_user_by_id(user_id)
     proposer_name = proposer.get('displayName', 'Someone') if proposer else 'Someone'
+    system_text = f'{proposer_name} proposed a {sport} session on {day} from {start_hour}:00 to {end_hour}:00'
     msg_id = str(uuid.uuid4())
     msg_entity = Entity(client.key('Message', msg_id))
     msg_entity.update({
         'matchId': match_id,
         'senderId': user_id,
-        'text': f'{proposer_name} proposed a {sport} session on {day} from {start_hour}:00 to {end_hour}:00',
+        'text': system_text,
         'type': 'session_proposal',
         'metadata': {
             'sessionId': session_id,
@@ -805,7 +833,12 @@ def create_session(match_id):
         'readBy': [user_id],
         'createdAt': created_at,
     })
-    client.put(msg_entity)
+
+    # Cache lastMessage on the Match entity
+    match['lastMessageText'] = system_text
+    match['lastMessageSenderId'] = user_id
+    match['lastMessageCreatedAt'] = created_at
+    client.put_multi([session_entity, msg_entity, match])
 
     return jsonify({
         'success': True,
@@ -851,12 +884,13 @@ def update_session(match_id, session_id):
     responder = get_user_by_id(user_id)
     responder_name = responder.get('displayName', 'Someone') if responder else 'Someone'
     verb = 'accepted' if action == 'accept' else 'declined'
+    system_text = f'{responder_name} {verb} the {session.get("sport")} session'
     msg_id = str(uuid.uuid4())
     msg_entity = Entity(client.key('Message', msg_id))
     msg_entity.update({
         'matchId': match_id,
         'senderId': user_id,
-        'text': f'{responder_name} {verb} the {session.get("sport")} session',
+        'text': system_text,
         'type': 'session_response',
         'metadata': {
             'sessionId': session_id,
@@ -865,7 +899,16 @@ def update_session(match_id, session_id):
         'readBy': [user_id],
         'createdAt': now,
     })
-    client.put(msg_entity)
+
+    # Cache lastMessage on the Match entity
+    match_entity = client.get(client.key('Match', match_id))
+    if match_entity:
+        match_entity['lastMessageText'] = system_text
+        match_entity['lastMessageSenderId'] = user_id
+        match_entity['lastMessageCreatedAt'] = now
+        client.put_multi([msg_entity, match_entity])
+    else:
+        client.put(msg_entity)
 
     return jsonify({
         'success': True,
