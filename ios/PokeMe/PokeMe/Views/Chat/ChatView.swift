@@ -11,40 +11,59 @@ struct ChatView: View {
     @State private var messageText = ""
     @State private var selectedMessageForReaction: Message?
     @State private var showProposalSheet = false
+    @State private var showSessionDetails = false
+    @State private var showChangeProposal = false
+    @State private var showPinnedCard = false
+    @State private var showCancelConfirmation = false
     @FocusState private var isInputFocused: Bool
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
+                // Session toggle button + collapsible card
+                if let session = viewModel.activeSession {
+                    VStack(spacing: 0) {
+                        sessionToggleButton(session: session)
+                        if showPinnedCard {
+                            SessionPinnedCard(
+                                session: session,
+                                currentUserId: authViewModel.user?.id ?? "",
+                                onAccept: {
+                                    Task {
+                                        await viewModel.respondToSession(
+                                            token: authViewModel.getToken(),
+                                            sessionId: session.id,
+                                            action: "accept"
+                                        )
+                                    }
+                                },
+                                onDecline: {
+                                    Task {
+                                        await viewModel.respondToSession(
+                                            token: authViewModel.getToken(),
+                                            sessionId: session.id,
+                                            action: "decline"
+                                        )
+                                    }
+                                },
+                                onViewDetails: { showSessionDetails = true },
+                                onProposeChange: { showChangeProposal = true },
+                                onCancel: { showCancelConfirmation = true }
+                            )
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+                    Divider()
+                }
+
                 // Messages list
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(viewModel.messages) { message in
                                 if message.isSessionProposal || message.isSessionResponse {
-                                    SessionProposalBubble(
-                                        message: message,
-                                        currentUserId: authViewModel.user?.id ?? "",
-                                        onAccept: { sessionId in
-                                            Task {
-                                                await viewModel.respondToSession(
-                                                    token: authViewModel.getToken(),
-                                                    sessionId: sessionId,
-                                                    action: "accept"
-                                                )
-                                            }
-                                        },
-                                        onDecline: { sessionId in
-                                            Task {
-                                                await viewModel.respondToSession(
-                                                    token: authViewModel.getToken(),
-                                                    sessionId: sessionId,
-                                                    action: "decline"
-                                                )
-                                            }
-                                        }
-                                    )
-                                    .id(message.id)
+                                    SessionProposalBubble(message: message)
+                                        .id(message.id)
                                 } else {
                                     MessageBubble(
                                         message: message,
@@ -156,9 +175,47 @@ struct ChatView: View {
                     matchId: matchId,
                     token: authViewModel.getToken(),
                     onProposed: {
-                        Task {
-                            await viewModel.fetchMessages(token: authViewModel.getToken())
+                        Task { await viewModel.fetchMessages(token: authViewModel.getToken()) }
+                    }
+                )
+            }
+            .sheet(isPresented: $showSessionDetails) {
+                if let session = viewModel.activeSession {
+                    SessionDetailsSheet(
+                        session: session,
+                        currentUserId: authViewModel.user?.id ?? "",
+                        onAccept: {
+                            Task {
+                                await viewModel.respondToSession(
+                                    token: authViewModel.getToken(),
+                                    sessionId: session.id,
+                                    action: "accept"
+                                )
+                            }
+                        },
+                        onDecline: {
+                            Task {
+                                await viewModel.respondToSession(
+                                    token: authViewModel.getToken(),
+                                    sessionId: session.id,
+                                    action: "decline"
+                                )
+                            }
+                        },
+                        onProposeChange: { showChangeProposal = true },
+                        onCancel: {
+                            Task { await viewModel.cancelSession(token: authViewModel.getToken(), sessionId: session.id) }
                         }
+                    )
+                }
+            }
+            .sheet(isPresented: $showChangeProposal) {
+                ProposalSheet(
+                    matchId: matchId,
+                    token: authViewModel.getToken(),
+                    prefillSession: viewModel.activeSession,
+                    onProposed: {
+                        Task { await viewModel.fetchMessages(token: authViewModel.getToken()) }
                     }
                 )
             }
@@ -183,6 +240,21 @@ struct ChatView: View {
                 )
                 .presentationDetents([.height(140)])
             }
+            .alert("Cancel Session?", isPresented: $showCancelConfirmation) {
+                Button("Yes, Cancel", role: .destructive) {
+                    if let session = viewModel.activeSession {
+                        Task {
+                            await viewModel.cancelSession(
+                                token: authViewModel.getToken(),
+                                sessionId: session.id
+                            )
+                        }
+                    }
+                }
+                Button("Keep", role: .cancel) {}
+            } message: {
+                Text("Are you sure you want to cancel this session? The other person will be notified.")
+            }
         }
     }
 
@@ -204,6 +276,68 @@ struct ChatView: View {
             messageText = ""
             let _ = await viewModel.sendMessage(token: authViewModel.getToken(), text: text)
         }
+    }
+
+    @ViewBuilder
+    private func sessionToggleButton(session: Session) -> some View {
+        let emoji = AvailabilityHelper.sportEmoji(for: session.sport)
+        let dateStr = AvailabilityHelper.formatSessionDate(session.date, fallback: session.day)
+        let timeStr = "\(AvailabilityHelper.formatHour(session.startHour))–\(AvailabilityHelper.formatHour(session.endHour))"
+        let isConfirmed = session.status == "accepted"
+
+        Button(action: {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                showPinnedCard.toggle()
+            }
+        }) {
+            HStack(spacing: 8) {
+                // Sport emoji in a bordered circle (or calendar fallback)
+                ZStack {
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            lineWidth: 1.5
+                        )
+                        .frame(width: 30, height: 30)
+                    if let emoji = emoji {
+                        Text(emoji)
+                            .font(.system(size: 15))
+                    } else {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing))
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(session.sport)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.primary)
+                        Circle()
+                            .fill(isConfirmed ? Color.green : Color.orange)
+                            .frame(width: 5, height: 5)
+                        Text(isConfirmed ? "Confirmed" : "Pending")
+                            .font(.caption)
+                            .foregroundColor(isConfirmed ? .green : .orange)
+                    }
+                    Text("\(dateStr) · \(timeStr)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: showPinnedCard ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color(.systemGray6))
+        }
+        .buttonStyle(.plain)
     }
 }
 

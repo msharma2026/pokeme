@@ -45,10 +45,12 @@ def session_to_dict(entity):
         'responderId': entity.get('responderId'),
         'sport': entity.get('sport'),
         'day': entity.get('day'),
+        'date': entity.get('date', ''),
         'startHour': entity.get('startHour'),
         'endHour': entity.get('endHour'),
         'location': entity.get('location'),
         'status': entity.get('status'),
+        'isChangeProposal': entity.get('isChangeProposal', False),
         'createdAt': entity.get('createdAt'),
         'updatedAt': entity.get('updatedAt'),
     }

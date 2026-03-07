@@ -38,7 +38,9 @@ enum Constants {
         // Sessions
         static func compatibleTimes(_ matchId: String) -> String { "/matches/\(matchId)/compatible-times" }
         static func sessions(_ matchId: String) -> String { "/matches/\(matchId)/sessions" }
+        static func activeSession(_ matchId: String) -> String { "/matches/\(matchId)/session" }
         static func updateSession(_ matchId: String, _ sessionId: String) -> String { "/matches/\(matchId)/sessions/\(sessionId)" }
+        static func cancelSession(_ matchId: String, _ sessionId: String) -> String { "/matches/\(matchId)/sessions/\(sessionId)" }
         static let upcomingSessions = "/sessions/upcoming"
 
         // Meetups

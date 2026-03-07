@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 class ChatViewModel: ObservableObject {
     @Published var messages: [Message] = []
+    @Published var activeSession: Session?
     @Published var isLoading = false
     @Published var isSending = false
     @Published var errorMessage: String?
@@ -62,6 +63,14 @@ class ChatViewModel: ObservableObject {
             latestMessageTimestamp = messages.compactMap { $0.createdAt }.max() ?? latestMessageTimestamp
 
             await markUnreadMessagesAsRead(token: token)
+
+            // Refresh active session alongside every message fetch (uses existing sessions list endpoint)
+            if let sessionsResponse = try? await MessageService.shared.getSessions(token: token, matchId: matchId) {
+                let active = sessionsResponse.sessions.filter { s in
+                    s.status == "pending" || s.status == "accepted"
+                }
+                activeSession = active.max { $0.createdAt < $1.createdAt }
+            }
         } catch let error as NetworkError {
             errorMessage = error.errorDescription
         } catch {
@@ -208,6 +217,21 @@ class ChatViewModel: ObservableObject {
             )
             await fetchMessages(token: token)
         } catch {}
+    }
+
+    func cancelSession(token: String?, sessionId: String) async {
+        guard let token = token, let matchId = matchId else { return }
+
+        activeSession = nil  // Optimistic clear
+        do {
+            _ = try await MessageService.shared.updateSession(
+                token: token,
+                matchId: matchId,
+                sessionId: sessionId,
+                action: "cancel"
+            )
+        } catch {}
+        await fetchMessages(token: token)
     }
 
     // MARK: - Typing Indicators

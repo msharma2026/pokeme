@@ -61,6 +61,8 @@
 		F1F1F1F1F1F1F1F1F1F1F1F1 /* MeetupSportPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2A2A2A2A2A2A2A2A2A2A2A2 /* MeetupSportPickerView.swift */; };
 		EC5D3A1B0F2748956C8E2D4F /* MeetupChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */; };
 		FD6E4B2C1038596A7D9F3E50 /* MeetupChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */; };
+		D1E2F3D1E2F3D1E2F3D1E2F3 /* SessionPinnedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F3E2F3E2F3E2F3E2F3E2F3 /* SessionPinnedCard.swift */; };
+		F3A1F3A1F3A1F3A1F3A1F3A1 /* SessionDetailsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2A1B2A1B2A1B2A1B2A1B2 /* SessionDetailsSheet.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -127,6 +129,8 @@
 		A2A2A2A2A2A2A2A2A2A2A2A2 /* MeetupSportPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupSportPickerView.swift; sourceTree = "<group>"; };
 		47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupChatViewModel.swift; sourceTree = "<group>"; };
 		58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupChatView.swift; sourceTree = "<group>"; };
+		E2F3E2F3E2F3E2F3E2F3E2F3 /* SessionPinnedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPinnedCard.swift; sourceTree = "<group>"; };
+		A1B2A1B2A1B2A1B2A1B2A1B2 /* SessionDetailsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailsSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -307,6 +311,8 @@
 				9BB9313AB993FE2599C176F1 /* ChatView.swift */,
 				1A771A771A771A771A771A77 /* ProposalSheet.swift */,
 				2B882B882B882B882B882B88 /* SessionProposalBubble.swift */,
+				E2F3E2F3E2F3E2F3E2F3E2F3 /* SessionPinnedCard.swift */,
+				A1B2A1B2A1B2A1B2A1B2A1B2 /* SessionDetailsSheet.swift */,
 			);
 			name = Chat;
 			path = Chat;
@@ -451,6 +457,8 @@
 				F1F1F1F1F1F1F1F1F1F1F1F1 /* MeetupSportPickerView.swift in Sources */,
 				EC5D3A1B0F2748956C8E2D4F /* MeetupChatViewModel.swift in Sources */,
 				FD6E4B2C1038596A7D9F3E50 /* MeetupChatView.swift in Sources */,
+				D1E2F3D1E2F3D1E2F3D1E2F3 /* SessionPinnedCard.swift in Sources */,
+				F3A1F3A1F3A1F3A1F3A1F3A1 /* SessionDetailsSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

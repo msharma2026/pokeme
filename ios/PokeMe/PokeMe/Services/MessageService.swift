@@ -98,6 +98,22 @@ class MessageService {
         )
     }
 
+    func getActiveSession(token: String, matchId: String) async throws -> ActiveSessionResponse {
+        return try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.activeSession(matchId),
+            method: .GET,
+            token: token
+        )
+    }
+
+    func cancelSession(token: String, matchId: String, sessionId: String) async throws {
+        let _: SessionResponse = try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.cancelSession(matchId, sessionId),
+            method: .DELETE,
+            token: token
+        )
+    }
+
     func getSessions(token: String, matchId: String) async throws -> SessionsListResponse {
         return try await NetworkService.shared.request(
             endpoint: Constants.Endpoints.sessions(matchId),

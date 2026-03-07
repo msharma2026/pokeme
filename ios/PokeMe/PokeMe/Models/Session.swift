@@ -7,10 +7,12 @@ struct Session: Codable, Identifiable {
     let responderId: String
     let sport: String
     let day: String
+    let date: String?   // ISO date "2026-03-07"; nil for older sessions
     let startHour: Int
     let endHour: Int
     let location: String?
-    let status: String  // "pending", "accepted", "declined"
+    let status: String  // "pending", "accepted", "declined", "cancelled", "superseded"
+    let isChangeProposal: Bool?
     let createdAt: String
     let updatedAt: String?
 }
@@ -29,6 +31,7 @@ struct CompatibleTimesResponse: Codable {
 struct CreateSessionRequest: Codable {
     let sport: String
     let day: String
+    let date: String   // ISO date "2026-03-07"
     let startHour: Int
     let endHour: Int
     let location: String
@@ -36,6 +39,10 @@ struct CreateSessionRequest: Codable {
 
 struct SessionResponse: Codable {
     let session: Session
+}
+
+struct ActiveSessionResponse: Codable {
+    let session: Session?
 }
 
 struct SessionsListResponse: Codable {

@@ -27,6 +27,53 @@ enum AvailabilityHelper {
         return hour
     }
 
+    /// Format ISO date "yyyy-MM-dd" to display string: "2026-03-07" → "Fri, 3/7"
+    /// Falls back to dayName (e.g. "Friday") if date is nil or unparseable.
+    static func formatSessionDate(_ isoDate: String?, fallback dayName: String) -> String {
+        guard let isoDate = isoDate, !isoDate.isEmpty else { return dayName }
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "yyyy-MM-dd"
+        guard let date = input.date(from: isoDate) else { return dayName }
+        let output = DateFormatter()
+        output.dateFormat = "EEE, M/d"
+        return output.string(from: date)
+    }
+
+    /// Full date: "2026-03-07" → "Friday, 3/7"
+    static func formatSessionDateLong(_ isoDate: String?, fallback dayName: String) -> String {
+        guard let isoDate = isoDate, !isoDate.isEmpty else { return dayName }
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "yyyy-MM-dd"
+        guard let date = input.date(from: isoDate) else { return dayName }
+        let output = DateFormatter()
+        output.dateFormat = "EEEE, M/d"
+        return output.string(from: date)
+    }
+
+    /// Emoji for a sport name. Returns nil if no mapping exists.
+    static func sportEmoji(for sport: String) -> String? {
+        let map: [String: String] = [
+            "Basketball":   "🏀",
+            "Tennis":       "🎾",
+            "Soccer":       "⚽",
+            "Volleyball":   "🏐",
+            "Badminton":    "🏸",
+            "Running":      "🏃",
+            "Swimming":     "🏊",
+            "Cycling":      "🚴",
+            "Table Tennis": "🏓",
+            "Football":     "🏈",
+            "Baseball":     "⚾",
+            "Golf":         "⛳",
+            "Hiking":       "🥾",
+            "Yoga":         "🧘",
+            "Rock Climbing":"🧗",
+        ]
+        return map[sport]
+    }
+
     /// Format hour int to display string: 14 -> "2 PM", 9 -> "9 AM"
     static func formatHour(_ hour: Int) -> String {
         let period = hour >= 12 ? "PM" : "AM"

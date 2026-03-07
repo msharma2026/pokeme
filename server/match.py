@@ -784,6 +784,7 @@ def create_session(match_id):
     data = request.get_json()
     sport = data.get('sport')
     day = data.get('day')
+    date = data.get('date', '')  # ISO date "2026-03-07"
     start_hour = data.get('startHour')
     end_hour = data.get('endHour')
     location = data.get('location', '')
@@ -791,10 +792,32 @@ def create_session(match_id):
     if not sport or not day or start_hour is None or end_hour is None:
         return error_response('VALIDATION_ERROR', 'sport, day, startHour, and endHour are required')
 
+    # Format date for display in auto-message
+    date_display = day
+    if date:
+        try:
+            d = datetime.strptime(date, '%Y-%m-%d')
+            date_display = f"{d.strftime('%B')} {d.day}"  # "March 7"
+        except (ValueError, TypeError):
+            date_display = day
+
     client = get_client()
-    session_id = str(uuid.uuid4())
     created_at = datetime.utcnow().isoformat() + 'Z'
 
+    # Supersede any existing pending or accepted sessions BEFORE creating the new one
+    # so the new session is never included in this query.
+    existing_query = client.query(kind='Session')
+    existing_query.add_filter('matchId', '=', match_id)
+    superseded = []
+    has_existing_active = False
+    for existing_session in existing_query.fetch():
+        if existing_session.get('status') in ('pending', 'accepted'):
+            has_existing_active = True
+            existing_session['status'] = 'superseded'
+            existing_session['updatedAt'] = created_at
+            superseded.append(existing_session)
+
+    session_id = str(uuid.uuid4())
     session_entity = Entity(client.key('Session', session_id))
     session_entity.update({
         'matchId': match_id,
@@ -802,19 +825,30 @@ def create_session(match_id):
         'responderId': partner_id,
         'sport': sport,
         'day': day,
+        'date': date,
         'startHour': start_hour,
         'endHour': end_hour,
         'location': location,
         'status': 'pending',
+        'isChangeProposal': has_existing_active,
         'createdAt': created_at,
         'updatedAt': created_at,
     })
-    client.put(session_entity)
 
-    # Auto-create system message in chat
+    # Use different message text when modifying an existing session
     proposer = get_user_by_id(user_id)
     proposer_name = proposer.get('displayName', 'Someone') if proposer else 'Someone'
-    system_text = f'{proposer_name} proposed a {sport} session on {day} from {start_hour}:00 to {end_hour}:00'
+    if has_existing_active:
+        system_text = (
+            f'{proposer_name} proposed changes to the session: '
+            f'{sport} on {day}, {date_display} from {start_hour}:00 to {end_hour}:00'
+        )
+    else:
+        system_text = (
+            f'{proposer_name} proposed a {sport} session on '
+            f'{day}, {date_display} from {start_hour}:00 to {end_hour}:00'
+        )
+
     msg_id = str(uuid.uuid4())
     msg_entity = Entity(client.key('Message', msg_id))
     msg_entity.update({
@@ -838,7 +872,7 @@ def create_session(match_id):
     match['lastMessageText'] = system_text
     match['lastMessageSenderId'] = user_id
     match['lastMessageCreatedAt'] = created_at
-    client.put_multi([session_entity, msg_entity, match])
+    client.put_multi(superseded + [session_entity, msg_entity, match])
 
     return jsonify({
         'success': True,
@@ -849,7 +883,7 @@ def create_session(match_id):
 @match_bp.route('/matches/<match_id>/sessions/<session_id>', methods=['PUT'])
 @require_auth
 def update_session(match_id, session_id):
-    """Accept or decline a session (responder only)."""
+    """Accept, decline, or cancel a session."""
     user_id = request.user_id
 
     match, _ = get_match_for_user(match_id, user_id)
@@ -863,27 +897,51 @@ def update_session(match_id, session_id):
     if not session or session.get('matchId') != match_id:
         return error_response('SESSION_NOT_FOUND', 'Session not found', 404)
 
-    if session.get('responderId') != user_id:
-        return error_response('NOT_RESPONDER', 'Only the responder can accept/decline', 403)
-
-    if session.get('status') != 'pending':
-        return error_response('SESSION_NOT_PENDING', 'Session is no longer pending')
-
     data = request.get_json()
-    action = data.get('action')  # "accept" or "decline"
+    action = data.get('action')  # "accept", "decline", or "cancel"
 
-    if action not in ('accept', 'decline'):
-        return error_response('VALIDATION_ERROR', 'action must be "accept" or "decline"')
+    if action not in ('accept', 'decline', 'cancel'):
+        return error_response('VALIDATION_ERROR', 'action must be "accept", "decline", or "cancel"')
 
     now = datetime.utcnow().isoformat() + 'Z'
-    session['status'] = 'accepted' if action == 'accept' else 'declined'
+
+    if action == 'cancel':
+        # Either participant can cancel a pending or accepted session
+        if session.get('status') not in ('pending', 'accepted'):
+            return error_response('SESSION_NOT_ACTIVE', 'Session is not active')
+        session['status'] = 'cancelled'
+    else:
+        # Accept / decline — responder only, must be pending
+        if session.get('responderId') != user_id:
+            return error_response('NOT_RESPONDER', 'Only the responder can accept/decline', 403)
+        if session.get('status') != 'pending':
+            return error_response('SESSION_NOT_PENDING', 'Session is no longer pending')
+        session['status'] = 'accepted' if action == 'accept' else 'declined'
+
     session['updatedAt'] = now
+
+    if action == 'accept':
+        # Clean up superseded sessions now that a new version is confirmed
+        cleanup_query = client.query(kind='Session')
+        cleanup_query.add_filter('matchId', '=', match_id)
+        keys_to_delete = [
+            s.key for s in cleanup_query.fetch()
+            if s.get('status') == 'superseded' and s.key.name != session_id
+        ]
+        if keys_to_delete:
+            client.delete_multi(keys_to_delete)
+
     client.put(session)
 
     # Auto-create system message
     responder = get_user_by_id(user_id)
     responder_name = responder.get('displayName', 'Someone') if responder else 'Someone'
-    verb = 'accepted' if action == 'accept' else 'declined'
+    if action == 'cancel':
+        verb = 'cancelled'
+    elif action == 'accept':
+        verb = 'accepted'
+    else:
+        verb = 'declined'
     system_text = f'{responder_name} {verb} the {session.get("sport")} session'
     msg_id = str(uuid.uuid4())
     msg_entity = Entity(client.key('Message', msg_id))
@@ -959,4 +1017,87 @@ def get_upcoming_sessions():
     return jsonify({
         'success': True,
         'data': {'sessions': sessions}
+    })
+
+
+@match_bp.route('/matches/<match_id>/session', methods=['GET'])
+@require_auth
+def get_active_session(match_id):
+    """Get the current active (pending or accepted) session for a match."""
+    user_id = request.user_id
+
+    match, _ = get_match_for_user(match_id, user_id)
+    if not match:
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
+
+    client = get_client()
+    query = client.query(kind='Session')
+    query.add_filter('matchId', '=', match_id)
+
+    active = None
+    for s in query.fetch():
+        if s.get('status') in ('pending', 'accepted'):
+            if active is None or s.get('createdAt', '') > active.get('createdAt', ''):
+                active = s
+
+    return jsonify({
+        'success': True,
+        'data': {'session': session_to_dict(active)}
+    })
+
+
+@match_bp.route('/matches/<match_id>/sessions/<session_id>', methods=['DELETE'])
+@require_auth
+def cancel_session(match_id, session_id):
+    """Cancel a session (either participant can cancel)."""
+    user_id = request.user_id
+
+    match, _ = get_match_for_user(match_id, user_id)
+    if not match:
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
+
+    client = get_client()
+    session_key = client.key('Session', session_id)
+    session = client.get(session_key)
+
+    if not session or session.get('matchId') != match_id:
+        return error_response('SESSION_NOT_FOUND', 'Session not found', 404)
+
+    if session.get('status') not in ('pending', 'accepted'):
+        return error_response('SESSION_NOT_ACTIVE', 'Session is not active')
+
+    now = datetime.utcnow().isoformat() + 'Z'
+    session['status'] = 'cancelled'
+    session['updatedAt'] = now
+
+    canceller = get_user_by_id(user_id)
+    canceller_name = canceller.get('displayName', 'Someone') if canceller else 'Someone'
+    system_text = f'{canceller_name} cancelled the {session.get("sport")} session'
+    msg_id = str(uuid.uuid4())
+    msg_entity = Entity(client.key('Message', msg_id))
+    msg_entity.update({
+        'matchId': match_id,
+        'senderId': user_id,
+        'text': system_text,
+        'type': 'session_response',
+        'metadata': {
+            'sessionId': session_id,
+            'action': 'cancel',
+        },
+        'readBy': [user_id],
+        'createdAt': now,
+    })
+
+    match_entity = client.get(client.key('Match', match_id))
+    if match_entity:
+        match_entity['lastMessageText'] = system_text
+        match_entity['lastMessageSenderId'] = user_id
+        match_entity['lastMessageCreatedAt'] = now
+        client.put_multi([session, msg_entity, match_entity])
+    else:
+        client.put_multi([session, msg_entity])
+
+    return jsonify({
+        'success': True,
+        'data': {'session': session_to_dict(session)}
     })
