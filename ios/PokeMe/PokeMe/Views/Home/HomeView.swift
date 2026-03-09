@@ -36,6 +36,11 @@ struct HomeView: View {
                     MatchesListView()
                         .environmentObject(authViewModel)
                         .frame(width: w)
+                    ScheduleView()
+                        .environmentObject(authViewModel)
+                        .environmentObject(matchViewModel)
+                        .environmentObject(meetupViewModel)
+                        .frame(width: w)
                     ProfileView()
                         .environmentObject(authViewModel)
                         .frame(width: w)
@@ -77,12 +82,12 @@ struct HomeView: View {
                                 let dx = value.translation.width
                                 let dy = value.translation.height
                                 guard abs(dx) > abs(dy) * 1.2 else { return }
-                                dragOffset = selectedTab == 4 ? dx * 0.3 : dx
+                                dragOffset = selectedTab == 5 ? dx * 0.3 : dx
                             }
                             .onEnded { value in
                                 let predicted = value.predictedEndTranslation.width
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                    if predicted < -w * 0.3 { selectedTab = min(selectedTab + 1, 4) }
+                                    if predicted < -w * 0.3 { selectedTab = min(selectedTab + 1, 5) }
                                     dragOffset = 0
                                 }
                             }
@@ -122,7 +127,7 @@ struct HomeView: View {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { selectedTab = 1 }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("SwitchToProfile"))) { _ in
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { selectedTab = 4 }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { selectedTab = 5 }
         }
     }
 
@@ -134,7 +139,8 @@ struct HomeView: View {
                        badge: pokesViewModel.pokeCount > 0 ? pokesViewModel.pokeCount : nil)
             tabBarItem(3, icon: "message",          activeIcon: "message.fill",         label: "Matches",
                        badge: unreadMatchCount > 0 ? unreadMatchCount : nil)
-            tabBarItem(4, icon: "person",           activeIcon: "person.fill",          label: "Profile")
+            tabBarItem(4, icon: "calendar",         activeIcon: "calendar",             label: "Schedule")
+            tabBarItem(5, icon: "person",           activeIcon: "person.fill",          label: "Profile")
         }
         .padding(.top, 8)
         .padding(.bottom, 4)

@@ -15,6 +15,39 @@ struct CreateMeetupView: View {
     @State private var playerLimit = 6
     @State private var isSaving = false
 
+    init(viewModel: MeetupViewModel, prefill: Meetup? = nil) {
+        _viewModel = ObservedObject(wrappedValue: viewModel)
+        _isSaving = State(initialValue: false)
+        if let m = prefill {
+            _sport = State(initialValue: Sport(rawValue: m.sport) ?? .basketball)
+            _title = State(initialValue: m.title)
+            _description = State(initialValue: m.description ?? "")
+
+            let dateFmt = DateFormatter()
+            dateFmt.locale = Locale(identifier: "en_US_POSIX")
+            dateFmt.dateFormat = "yyyy-MM-dd"
+            _date = State(initialValue: dateFmt.date(from: m.date) ?? Date())
+
+            let timeFmt = DateFormatter()
+            timeFmt.locale = Locale(identifier: "en_US_POSIX")
+            timeFmt.dateFormat = "HH:mm"
+            _time = State(initialValue: timeFmt.date(from: m.time) ?? Date())
+
+            _location = State(initialValue: m.location ?? "")
+            _selectedSkillLevels = State(initialValue: Set(m.skillLevels ?? []))
+            _playerLimit = State(initialValue: m.playerLimit ?? 6)
+        } else {
+            _sport = State(initialValue: .basketball)
+            _title = State(initialValue: "")
+            _description = State(initialValue: "")
+            _date = State(initialValue: Date())
+            _time = State(initialValue: Date())
+            _location = State(initialValue: "")
+            _selectedSkillLevels = State(initialValue: [])
+            _playerLimit = State(initialValue: 6)
+        }
+    }
+
     var body: some View {
         NavigationView {
             Form {

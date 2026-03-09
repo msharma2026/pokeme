@@ -63,6 +63,8 @@
 		FD6E4B2C1038596A7D9F3E50 /* MeetupChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */; };
 		D1E2F3D1E2F3D1E2F3D1E2F3 /* SessionPinnedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F3E2F3E2F3E2F3E2F3E2F3 /* SessionPinnedCard.swift */; };
 		F3A1F3A1F3A1F3A1F3A1F3A1 /* SessionDetailsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2A1B2A1B2A1B2A1B2A1B2 /* SessionDetailsSheet.swift */; };
+		BBCD2345BBCD2345BBCD2345 /* ScheduleViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABC1234AABC1234AABC1234 /* ScheduleViewModel.swift */; };
+		DDEF4567DDEF4567DDEF4567 /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDE3456CCDE3456CCDE3456 /* ScheduleView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -131,6 +133,8 @@
 		58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupChatView.swift; sourceTree = "<group>"; };
 		E2F3E2F3E2F3E2F3E2F3E2F3 /* SessionPinnedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPinnedCard.swift; sourceTree = "<group>"; };
 		A1B2A1B2A1B2A1B2A1B2A1B2 /* SessionDetailsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDetailsSheet.swift; sourceTree = "<group>"; };
+		AABC1234AABC1234AABC1234 /* ScheduleViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleViewModel.swift; sourceTree = "<group>"; };
+		CCDE3456CCDE3456CCDE3456 /* ScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -216,6 +220,7 @@
 				FF66FF66FF66FF66FF66FF66 /* MeetupViewModel.swift */,
 				47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */,
 				B2C3D4E5F60718293A4B5C6D /* MessageNotificationPoller.swift */,
+				AABC1234AABC1234AABC1234 /* ScheduleViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -242,6 +247,14 @@
 			path = Meetups;
 			sourceTree = "<group>";
 		};
+		EEF05678EEF05678EEF05678 /* Schedule */ = {
+			isa = PBXGroup;
+			children = (
+				CCDE3456CCDE3456CCDE3456 /* ScheduleView.swift */,
+			);
+			path = Schedule;
+			sourceTree = "<group>";
+		};
 		8E0CC6226EDD240665044B0C /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -250,6 +263,7 @@
 				E038717E4E86C34AF08CAD13 /* Profile */,
 				EA650F42A3CB82A238058EEA /* Chat */,
 				AABB11CC22DD33EE44FF5566 /* Meetups */,
+				EEF05678EEF05678EEF05678 /* Schedule */,
 				8226B1B49D358F4AC1BDF0CB /* Settings */,
 			);
 			path = Views;
@@ -459,6 +473,8 @@
 				FD6E4B2C1038596A7D9F3E50 /* MeetupChatView.swift in Sources */,
 				D1E2F3D1E2F3D1E2F3D1E2F3 /* SessionPinnedCard.swift in Sources */,
 				F3A1F3A1F3A1F3A1F3A1F3A1 /* SessionDetailsSheet.swift in Sources */,
+				BBCD2345BBCD2345BBCD2345 /* ScheduleViewModel.swift in Sources */,
+				DDEF4567DDEF4567DDEF4567 /* ScheduleView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
