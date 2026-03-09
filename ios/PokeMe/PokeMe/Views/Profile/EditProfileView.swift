@@ -187,6 +187,10 @@ struct EditProfileView: View {
                                             .fill(isSelected ? Color.orange : Color(uiColor: .systemGray5))
                                             .frame(height: 36)
                                             .overlay(
+                                                RoundedRectangle(cornerRadius: 6)
+                                                    .stroke(isSelected ? Color.clear : Color(uiColor: .separator), lineWidth: 1)
+                                            )
+                                            .overlay(
                                                 isSelected ? Image(systemName: "checkmark")
                                                     .font(.system(size: 10, weight: .bold))
                                                     .foregroundColor(.white)

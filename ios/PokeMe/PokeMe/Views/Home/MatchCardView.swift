@@ -488,8 +488,8 @@ struct DiscoverCardView: View {
         let map: [(key: String, label: String, max: Double, icon: String, color: Color)] = [
             ("sports", "Shared Sports", 55, "figure.run", .orange),
             ("availability", "Availability Overlap", 20, "calendar", .green),
-            ("year", "Same Year", 10, "graduationcap.fill", .blue),
-            ("major_bio", "Similar Interests", 15, "brain.head.profile", .purple),
+            ("collegeYear", "Same Year", 10, "graduationcap.fill", .blue),
+            ("majorBio", "Similar Interests", 15, "brain.head.profile", .purple),
         ]
         return map.compactMap { item in
             guard let score = breakdown[item.key] else { return nil }

@@ -12,12 +12,26 @@ logger = logging.getLogger(__name__)
 # Claude AI recommendation
 # ---------------------------------------------------------------------------
 
+def _parse_sports(raw):
+    """Parse sports from a list of dicts, Datastore entities, or a JSON string."""
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (ValueError, TypeError):
+            return []
+    if isinstance(raw, list):
+        return [s for s in raw if hasattr(s, 'get')]
+    return []
+
+
 def _profile_summary(user):
     """Extract relevant profile fields for the AI prompt (no pictures)."""
-    sports = user.get('sports', []) or []
+    sports = _parse_sports(user.get('sports', []))
     sports_str = ', '.join(
         f"{s.get('sport', '?')} ({s.get('skillLevel', '?')})"
-        for s in sports if isinstance(s, dict)
+        for s in sports
     ) or 'None'
 
     availability = user.get('availability', {}) or {}
@@ -110,53 +124,60 @@ def _call_claude(viewer, candidates):
         return results
 
     except Exception as e:
-        logger.warning(f'Claude API call failed: {e}, falling back to heuristic')
+        logger.warning(f'Claude API call failed: {type(e).__name__}: {e}')
         return None
 
 
 def rank_discover_candidates(viewer, candidates):
     """Rank candidates using Claude AI, with heuristic fallback."""
+    if not candidates:
+        return []
+
     ai_results = _call_claude(viewer, candidates)
 
-    if ai_results is not None and len(ai_results) == len(candidates):
-        # Build lookup by index
+    if ai_results is not None:
+        # Build lookup by index — tolerates partial results from Claude
         ai_by_index = {}
         for r in ai_results:
             idx = r.get('id')
             if isinstance(idx, int) and 0 <= idx < len(candidates):
                 ai_by_index[idx] = r
 
-        ranked = []
-        for i, candidate in enumerate(candidates):
-            candidate_id = candidate.key.name or str(candidate.key.id)
-            if i in ai_by_index:
-                ai = ai_by_index[i]
-                recommendation = {
-                    'score': max(0, min(100, ai.get('score', 50))),
-                    'reasons': ai.get('reasons', ['AI-recommended match']),
-                    'breakdown': ai.get('breakdown', {
-                        'sports': 50, 'availability': 50,
-                        'collegeYear': 50, 'majorBio': 50,
-                    }),
-                }
-            else:
-                recommendation = _heuristic_score(viewer, candidate)
+        if ai_by_index:
+            logger.info(f'Claude AI scored {len(ai_by_index)}/{len(candidates)} candidates')
+            ranked = []
+            for i, candidate in enumerate(candidates):
+                candidate_id = candidate.key.name or str(candidate.key.id)
+                if i in ai_by_index:
+                    ai = ai_by_index[i]
+                    recommendation = {
+                        'score': max(0, min(100, ai.get('score', 50))),
+                        'reasons': ai.get('reasons', ['AI-recommended match']),
+                        'breakdown': ai.get('breakdown', {
+                            'sports': 50, 'availability': 50,
+                            'collegeYear': 50, 'majorBio': 50,
+                        }),
+                        'rankedBy': 'claude',
+                    }
+                else:
+                    recommendation = _heuristic_score(viewer, candidate)
+                    recommendation['rankedBy'] = 'heuristic'
 
-            ranked.append({
-                'candidateId': candidate_id,
-                'candidate': candidate,
-                'recommendation': recommendation,
-            })
+                ranked.append({
+                    'candidateId': candidate_id,
+                    'candidate': candidate,
+                    'recommendation': recommendation,
+                })
 
-        ranked.sort(key=lambda item: (
-            -item['recommendation']['score'],
-            item['candidate'].get('displayName', '').strip().lower(),
-            item['candidateId'],
-        ))
-        return ranked
+            ranked.sort(key=lambda item: (
+                -item['recommendation']['score'],
+                item['candidate'].get('displayName', '').strip().lower(),
+                item['candidateId'],
+            ))
+            return ranked
 
     # Fallback to heuristic
-    logger.info('Using heuristic fallback for recommendations')
+    logger.warning('Claude AI unavailable or returned no results, using heuristic fallback')
     return _rank_heuristic(viewer, candidates)
 
 
@@ -203,7 +224,7 @@ def _tokenize_text(text):
 
 def _sport_map(user):
     sports = {}
-    for entry in user.get('sports', []) or []:
+    for entry in _parse_sports(user.get('sports', [])):
         if not isinstance(entry, dict):
             continue
         sport_name = _normalized_str(entry.get('sport'))
@@ -216,6 +237,11 @@ def _sport_map(user):
 
 def _availability_slots(user):
     availability = user.get('availability', {}) or {}
+    if isinstance(availability, str):
+        try:
+            availability = json.loads(availability)
+        except (ValueError, TypeError):
+            availability = {}
     slots = set()
     if not isinstance(availability, dict):
         return slots
