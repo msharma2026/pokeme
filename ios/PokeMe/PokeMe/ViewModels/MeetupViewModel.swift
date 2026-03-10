@@ -83,6 +83,7 @@ class MeetupViewModel: ObservableObject {
         do {
             let response = try await MeetupService.shared.createMeetup(token: token, request: body)
             meetups.insert(response.meetup, at: 0)
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshSchedule"), object: nil)
             return true
         } catch {
             errorMessage = "Failed to create meetup"
@@ -102,6 +103,7 @@ class MeetupViewModel: ObservableObject {
                 counts[meetupId] = response.meetup.participantCount
                 previousCounts = counts
             }
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshSchedule"), object: nil)
         } catch {
             errorMessage = "Failed to join meetup"
         }
@@ -115,6 +117,7 @@ class MeetupViewModel: ObservableObject {
             if let index = meetups.firstIndex(where: { $0.id == meetupId }) {
                 meetups[index] = response.meetup
             }
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshSchedule"), object: nil)
         } catch {
             errorMessage = "Failed to leave meetup"
         }
@@ -126,6 +129,7 @@ class MeetupViewModel: ObservableObject {
         do {
             try await MeetupService.shared.cancelMeetup(token: token, meetupId: meetupId)
             meetups.removeAll { $0.id == meetupId }
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshSchedule"), object: nil)
         } catch {
             errorMessage = "Failed to cancel meetup"
         }

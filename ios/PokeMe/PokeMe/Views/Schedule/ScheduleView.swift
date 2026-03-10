@@ -108,6 +108,14 @@ struct ScheduleView: View {
                     currentUserId: authViewModel.user?.id ?? ""
                 )
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshSchedule"))) { _ in
+                Task {
+                    await viewModel.fetch(
+                        token: token,
+                        currentUserId: authViewModel.user?.id ?? ""
+                    )
+                }
+            }
             .sheet(isPresented: $showProposal) {
                 if let session = proposalSession {
                     ProposalSheet(
@@ -480,10 +488,12 @@ struct ScheduleView: View {
         recreatePrefill = meetup
         showCreateAfterCancel = true
         await viewModel.fetch(token: token, currentUserId: authViewModel.user?.id ?? "")
+        NotificationCenter.default.post(name: NSNotification.Name("RefreshMeetups"), object: nil)
     }
 
     private func doLeaveMeetup(_ meetup: Meetup) async {
         _ = try? await MeetupService.shared.leaveMeetup(token: token, meetupId: meetup.id)
         await viewModel.fetch(token: token, currentUserId: authViewModel.user?.id ?? "")
+        NotificationCenter.default.post(name: NSNotification.Name("RefreshMeetups"), object: nil)
     }
 }
