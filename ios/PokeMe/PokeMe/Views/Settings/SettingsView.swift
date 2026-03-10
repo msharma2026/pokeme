@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var showResetConfirm = false
     @State private var resetResult: String?
     @State private var isResetting = false
+    @State private var showDeleteAccountConfirm = false
 
     var body: some View {
         NavigationView {
@@ -61,6 +62,14 @@ struct SettingsView: View {
                             Image(systemName: "rectangle.portrait.and.arrow.right")
                                 .foregroundColor(.red)
                             Text("Log Out")
+                                .foregroundColor(.red)
+                        }
+                    }
+                    Button(action: { showDeleteAccountConfirm = true }) {
+                        HStack {
+                            Image(systemName: "trash.fill")
+                                .foregroundColor(.red)
+                            Text("Delete Account")
                                 .foregroundColor(.red)
                         }
                     }
@@ -135,6 +144,14 @@ struct SettingsView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.orange)
                 }
+            }
+            .alert("Delete Account?", isPresented: $showDeleteAccountConfirm) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    Task { await authViewModel.deleteAccount() }
+                }
+            } message: {
+                Text("This will permanently delete your account and all your data. This cannot be undone.")
             }
             .alert("Reset Test Data?", isPresented: $showResetConfirm) {
                 Button("Cancel", role: .cancel) { }

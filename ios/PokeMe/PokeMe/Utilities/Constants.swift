@@ -11,6 +11,7 @@ enum Constants {
         static let me = "/auth/me"
         static let profile = "/auth/profile"
         static let profilePicture = "/auth/profile-picture"
+        static let deleteAccount = "/auth/account"
         static let discover = "/discover"
         static let matches = "/matches"
         static let incomingPokes = "/pokes/incoming"

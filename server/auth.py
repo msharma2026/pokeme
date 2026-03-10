@@ -228,6 +228,42 @@ def update_profile():
     })
 
 
+@auth_bp.route('/account', methods=['DELETE'])
+@require_auth
+def delete_account():
+    """Permanently delete the current user and all their data."""
+    user_id = request.user_id
+    client = get_client()
+
+    # Delete pokes
+    for field in ['fromUserId', 'toUserId']:
+        q = client.query(kind='Poke')
+        q.add_filter(field, '=', user_id)
+        for entity in q.fetch():
+            client.delete(entity.key)
+
+    # Delete matches and their messages/reactions/sessions
+    for field in ['user1Id', 'user2Id']:
+        q = client.query(kind='Match')
+        q.add_filter(field, '=', user_id)
+        for match in q.fetch():
+            match_id = match.key.name or str(match.key.id)
+
+            for kind in ['Message', 'MessageReaction', 'Session']:
+                mq = client.query(kind=kind)
+                mq.add_filter('matchId', '=', match_id)
+                for entity in mq.fetch():
+                    client.delete(entity.key)
+
+            client.delete(match.key)
+
+    # Delete the user entity
+    user_key = client.key('User', user_id)
+    client.delete(user_key)
+
+    return jsonify({'success': True, 'data': {}})
+
+
 @auth_bp.route('/profile-picture', methods=['POST'])
 @require_auth
 def upload_profile_picture():

@@ -43,4 +43,13 @@ class AuthService {
             token: token
         )
     }
+
+    func deleteAccount(token: String) async throws {
+        let _: EmptyResponse = try await NetworkService.shared.request(
+            endpoint: Constants.Endpoints.deleteAccount,
+            method: .DELETE,
+            token: token
+        )
+    }
+
 }
