@@ -13,6 +13,9 @@ struct OnboardingView: View {
     @State private var profileUIImage: UIImage?
     @State private var profileImageData: Data?
 
+    // Name
+    @State private var displayName = ""
+
     // About
     @State private var selectedYear = ""
     @State private var bio = ""
@@ -41,9 +44,10 @@ struct OnboardingView: View {
                 ZStack {
                     switch step {
                     case 0: welcomeStep
-                    case 1: photoStep
-                    case 2: aboutStep
-                    case 3: sportsStep
+                    case 1: nameStep
+                    case 2: photoStep
+                    case 3: aboutStep
+                    case 4: sportsStep
                     default: availabilityStep
                     }
                 }
@@ -66,6 +70,9 @@ struct OnboardingView: View {
             Button("Intermediate") { addSport(skill: "Intermediate") }
             Button("Advanced")     { addSport(skill: "Advanced") }
             Button("Cancel", role: .cancel) { pendingSport = nil }
+        }
+        .onAppear {
+            displayName = authViewModel.user?.displayName ?? ""
         }
         .onChange(of: photoItem) { _ in
             Task {
@@ -91,7 +98,7 @@ struct OnboardingView: View {
             }
             Spacer()
             HStack(spacing: 6) {
-                ForEach(1...4, id: \.self) { i in
+                ForEach(1...5, id: \.self) { i in
                     Capsule()
                         .fill(i <= step ? Color.orange : Color(.systemGray4))
                         .frame(width: i == step ? 22 : 8, height: 8)
@@ -133,18 +140,24 @@ struct OnboardingView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(16)
 
+                let nameValid = step != 1 || displayName.trimmingCharacters(in: .whitespaces).count >= 2
                 Button(action: advance) {
                     HStack(spacing: 6) {
-                        Text(step == 4 ? "Finish!" : "Next").fontWeight(.semibold)
-                        Image(systemName: step == 4 ? "checkmark" : "arrow.right")
+                        Text(step == 5 ? "Finish!" : "Next").fontWeight(.semibold)
+                        Image(systemName: step == 5 ? "checkmark" : "arrow.right")
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing))
+                    .background(
+                        nameValid
+                            ? LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                            : LinearGradient(colors: [.gray.opacity(0.4), .gray.opacity(0.4)], startPoint: .leading, endPoint: .trailing)
+                    )
                     .foregroundColor(.white)
                     .cornerRadius(16)
-                    .shadow(color: .orange.opacity(0.3), radius: 6, x: 0, y: 3)
+                    .shadow(color: nameValid ? .orange.opacity(0.3) : .clear, radius: 6, x: 0, y: 3)
                 }
+                .disabled(!nameValid)
             }
         }
     }
@@ -153,7 +166,7 @@ struct OnboardingView: View {
 
     private func advance() {
         goingForward = true
-        if step < 4 {
+        if step < 5 {
             withAnimation(.easeInOut(duration: 0.25)) { step += 1 }
         } else {
             finishOnboarding()
@@ -190,11 +203,11 @@ struct OnboardingView: View {
             }
 
             // Save profile fields
-            let current = authViewModel.user
+            let nameToSave = displayName.trimmingCharacters(in: .whitespaces)
             if let updated = await profileVM.updateProfile(
                 token: token,
-                displayName: current?.displayName ?? "",
-                major: current?.major,
+                displayName: nameToSave.isEmpty ? (authViewModel.user?.displayName ?? "") : nameToSave,
+                major: authViewModel.user?.major,
                 bio: bio.isEmpty ? nil : bio,
                 socials: nil,
                 sports: sports.isEmpty ? nil : sports,
@@ -236,7 +249,39 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 1: Photo
+    // MARK: - Step 1: Name
+
+    @FocusState private var nameFieldFocused: Bool
+
+    private var nameStep: some View {
+        VStack(spacing: 28) {
+            stepHeader(icon: "person.text.rectangle.fill", title: "What's your name?", subtitle: "This is how other players will find you")
+
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Full name", text: $displayName)
+                    .font(.title2)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(16)
+                    .focused($nameFieldFocused)
+                    .submitLabel(.next)
+                    .onSubmit { advance() }
+
+                if displayName.trimmingCharacters(in: .whitespaces).count < 2 && !displayName.isEmpty {
+                    Text("Name must be at least 2 characters")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .padding(.leading, 4)
+                }
+            }
+            .padding(.horizontal, 28)
+
+            Spacer()
+        }
+        .onAppear { nameFieldFocused = true }
+    }
+
+    // MARK: - Step 2: Photo
 
     private var photoStep: some View {
         VStack(spacing: 28) {

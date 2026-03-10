@@ -5,6 +5,8 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var showSettings = false
 
+    @State private var safeTop: CGFloat = 44
+
     // Collapsible section state
     @State private var sportsExpanded = true
     @State private var availabilityExpanded = true
@@ -33,7 +35,13 @@ struct ProfileView: View {
     }
 
     var body: some View {
-        NavigationView {
+        ZStack(alignment: .top) {
+            // Captures safe area inset so floating buttons clear the status bar
+            GeometryReader { geo in
+                Color.clear.onAppear { safeTop = geo.safeAreaInsets.top }
+            }
+            .ignoresSafeArea()
+
             ScrollView {
                 VStack(spacing: 0) {
                     // Gradient header
@@ -113,34 +121,39 @@ struct ProfileView: View {
                 }
             }
             .ignoresSafeArea(edges: .top)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape.fill")
-                            .foregroundColor(.orange)
-                    }
+
+            // Floating buttons — always visible, no NavigationView needed
+            HStack {
+                Button(action: { showSettings = true }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                        .padding(10)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showEditProfile = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "pencil")
-                            Text("Edit")
-                        }
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.orange)
+                Spacer()
+                Button(action: { showEditProfile = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "pencil")
+                        Text("Edit")
                     }
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                    .padding(10)
                 }
             }
-            .sheet(isPresented: $showEditProfile) {
-                EditProfileView()
-                    .environmentObject(authViewModel)
-            }
-            .sheet(isPresented: $showSettings) {
-                SettingsView()
-                    .environmentObject(authViewModel)
-            }
+            .padding(.horizontal, 6)
+            .padding(.top, safeTop)
+        }
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileView()
+                .environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(authViewModel)
         }
     }
 
