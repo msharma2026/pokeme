@@ -96,15 +96,14 @@ class AuthViewModel: ObservableObject {
         isLoading = true
         do {
             try await AuthService.shared.deleteAccount(token: token)
-            self.token = nil
-            self.user = nil
-            self.isAuthenticated = false
+            logout()
         } catch let error as NetworkError {
+            isLoading = false
             errorMessage = error.errorDescription
         } catch {
+            isLoading = false
             errorMessage = error.localizedDescription
         }
-        isLoading = false
     }
 
     func getToken() -> String? {
