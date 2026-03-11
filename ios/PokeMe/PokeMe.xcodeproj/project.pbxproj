@@ -65,6 +65,7 @@
 		FCACCB55FDDE104290742AAF /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB9313AB993FE2599C176F1 /* ChatView.swift */; };
 		FCFCFCFCFCFCFCFCFCFCFCFC /* MeetupDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FCC6FCC6FCC6FCC6FCC6FCC /* MeetupDetailView.swift */; };
 		FD6E4B2C1038596A7D9F3E50 /* MeetupChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E96D30F2C147A5B803DE91 /* MeetupChatView.swift */; };
+		BB000001BB000001BB000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0104B292F60FF36005EC420 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -354,6 +355,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 40DBDB2B08BA129A8BF2AE8C /* Build configuration list for PBXNativeTarget "PokeMe" */;
 			buildPhases = (
+				BB000002BB000002BB000002 /* Resources */,
 				DA2D66E6515B96F0A98C0C5B /* Sources */,
 			);
 			buildRules = (
@@ -398,6 +400,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BB000002BB000002BB000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB000001BB000001BB000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		497C34E9D25BAA58CFB1B4C3 /* Sources */ = {
