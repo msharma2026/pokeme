@@ -18,6 +18,7 @@ class DiscoverViewModel: ObservableObject {
     private var pendingProfiles: [User] = []
     private var backgroundPollTimer: Timer?
     private let cacheKey = "discoverProfilesCache"
+    private let pokedIdsKey = "pokedUserIds"
 
     init() {
         if let data = UserDefaults.standard.data(forKey: "discoverProfilesCache"),
@@ -26,6 +27,12 @@ class DiscoverViewModel: ObservableObject {
             profiles = cached
             hasLoadedOnce = true
         }
+        let saved = UserDefaults.standard.stringArray(forKey: pokedIdsKey) ?? []
+        pokedIds = Set(saved)
+    }
+
+    private func savePokedIds() {
+        UserDefaults.standard.set(Array(pokedIds), forKey: pokedIdsKey)
     }
 
     private func saveToCache() {
@@ -96,6 +103,11 @@ class DiscoverViewModel: ObservableObject {
             }
 
             let response = try await MatchService.shared.discover(token: token, sport: selectedSport)
+            if let serverPokedIds = response.pokedIds {
+                pokedIds = pokedIds.union(Set(serverPokedIds))
+                savePokedIds()
+                RelationshipStatusCache.shared.populatePokedIds(serverPokedIds)
+            }
             let enrichedProfiles = enrichProfilesWithRecommendations(response.profiles, viewer: viewer)
             profiles = enrichedProfiles.sorted {
                 ($0.recommendationScore ?? 0) > ($1.recommendationScore ?? 0)
@@ -289,6 +301,8 @@ class DiscoverViewModel: ObservableObject {
         do {
             let response = try await MatchService.shared.poke(token: token, userId: user.id)
             pokedIds.insert(user.id)
+            savePokedIds()
+            RelationshipStatusCache.shared.markPoked(user.id)
 
             if response.status == "matched" {
                 matchedUser = user

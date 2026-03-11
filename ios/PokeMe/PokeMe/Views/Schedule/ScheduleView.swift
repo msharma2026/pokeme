@@ -287,16 +287,30 @@ struct ScheduleView: View {
         .padding(.vertical, 2)
         .background(Color(uiColor: .secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
-        .opacity(isPast ? 0.65 : 1.0)
     }
 
     @ViewBuilder
     private func expandedSection(_ item: ScheduleViewModel.ScheduleItem, isPast: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             expandedDetails(item)
+            expandedParticipants(item)
             if !isPast {
                 expandedActions(item)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func expandedParticipants(_ item: ScheduleViewModel.ScheduleItem) -> some View {
+        switch item {
+        case .session(let s):
+            if let match = matchViewModel.matches.first(where: { $0.id == s.matchId }) {
+                SessionPartnerRow(match: match)
+                    .padding(.trailing, 16)
+            }
+        case .meetup(let m):
+            ScheduleMeetupParticipants(meetupId: m.id, token: token)
+                .padding(.trailing, 16)
         }
     }
 
@@ -519,5 +533,320 @@ struct ScheduleView: View {
         _ = try? await MeetupService.shared.leaveMeetup(token: token, meetupId: meetup.id)
         await viewModel.fetch(token: token, currentUserId: authViewModel.user?.id ?? "")
         NotificationCenter.default.post(name: NSNotification.Name("RefreshMeetups"), object: nil)
+    }
+}
+
+// MARK: - SessionPartnerRow
+
+struct SessionPartnerRow: View {
+    let match: Match
+    @EnvironmentObject var authViewModel: AuthViewModel
+
+    @State private var showProfile = false
+
+    private var partnerUser: User {
+        User(
+            id: match.partnerId,
+            email: nil,
+            phone: nil,
+            displayName: match.partnerName,
+            major: match.partnerMajor,
+            bio: match.partnerBio,
+            profilePicture: match.partnerProfilePicture,
+            socials: match.partnerSocials,
+            sports: match.partnerSports,
+            collegeYear: match.partnerCollegeYear,
+            availability: match.partnerAvailability,
+            recommendationScore: nil,
+            recommendationReasons: nil,
+            recommendationBreakdown: nil,
+            createdAt: match.createdAt
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Partner")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button { showProfile = true } label: {
+                HStack(spacing: 10) {
+                    partnerAvatar
+                    Text(match.partnerName)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .sheet(isPresented: $showProfile) {
+            NavigationView {
+                ParticipantProfileSheet(user: partnerUser)
+                    .environmentObject(authViewModel)
+                    .navigationTitle(match.partnerName)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") { showProfile = false }
+                                .fontWeight(.semibold)
+                                .foregroundColor(.orange)
+                        }
+                    }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var partnerAvatar: some View {
+        if let pic = match.partnerProfilePicture, !pic.isEmpty, let url = URL(string: pic) {
+            AsyncImage(url: url) { phase in
+                if let img = phase.image {
+                    img.resizable().scaledToFill()
+                } else {
+                    initialCircle(match.partnerName)
+                }
+            }
+            .frame(width: 36, height: 36)
+            .clipShape(Circle())
+        } else {
+            initialCircle(match.partnerName)
+        }
+    }
+
+    private func initialCircle(_ name: String) -> some View {
+        Circle()
+            .fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .frame(width: 36, height: 36)
+            .overlay(
+                Text(String(name.prefix(1)).uppercased())
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+            )
+    }
+}
+
+// MARK: - ScheduleMeetupParticipants
+
+struct ScheduleMeetupParticipants: View {
+    let meetupId: String
+    let token: String
+    @EnvironmentObject var authViewModel: AuthViewModel
+
+    @State private var participants: [User] = []
+    @State private var isLoading = false
+    @State private var showAllSheet = false
+    @State private var selectedUser: User? = nil
+
+    private let maxVisible = 6
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Participants")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if isLoading {
+                HStack(spacing: 6) {
+                    ProgressView().scaleEffect(0.7)
+                    Text("Loading...")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            } else if participants.isEmpty {
+                Text("No participants yet")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(participants.prefix(maxVisible)) { user in
+                            Button { selectedUser = user } label: {
+                                participantAvatar(user)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        if participants.count > maxVisible {
+                            Button { showAllSheet = true } label: {
+                                Text("+\(participants.count - maxVisible) more")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.orange.opacity(0.1))
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+        .task { await fetchParticipants() }
+        .sheet(isPresented: $showAllSheet) {
+            AllParticipantsSheet(participants: participants)
+                .environmentObject(authViewModel)
+        }
+        .sheet(item: $selectedUser) { user in
+            NavigationView {
+                ParticipantProfileSheet(user: user)
+                    .environmentObject(authViewModel)
+                    .navigationTitle(user.displayName)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button("Done") { selectedUser = nil }
+                                .fontWeight(.semibold)
+                                .foregroundColor(.orange)
+                        }
+                    }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func participantAvatar(_ user: User) -> some View {
+        VStack(spacing: 3) {
+            if let pic = user.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
+                AsyncImage(url: url) { phase in
+                    if let img = phase.image {
+                        img.resizable().scaledToFill()
+                    } else {
+                        initialCircle(user.displayName, size: 36)
+                    }
+                }
+                .frame(width: 36, height: 36)
+                .clipShape(Circle())
+            } else {
+                initialCircle(user.displayName, size: 36)
+            }
+            Text(user.displayName.components(separatedBy: " ").first ?? user.displayName)
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(maxWidth: 40)
+        }
+    }
+
+    private func initialCircle(_ name: String, size: CGFloat) -> some View {
+        Circle()
+            .fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .frame(width: size, height: size)
+            .overlay(
+                Text(String(name.prefix(1)).uppercased())
+                    .font(.system(size: size * 0.4, weight: .semibold))
+                    .foregroundColor(.white)
+            )
+    }
+
+    private func fetchParticipants() async {
+        // Serve from cache if still fresh (5-min TTL)
+        if let cached = MeetupParticipantsCache.shared.participants(for: meetupId) {
+            participants = cached
+            return
+        }
+        isLoading = true
+        do {
+            let response = try await MeetupService.shared.getParticipants(token: token, meetupId: meetupId)
+            participants = response.participants
+            MeetupParticipantsCache.shared.store(response.participants, for: meetupId)
+        } catch {
+            // silently fail
+        }
+        isLoading = false
+    }
+}
+
+// MARK: - AllParticipantsSheet
+
+struct AllParticipantsSheet: View {
+    let participants: [User]
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @Environment(\.dismiss) var dismiss
+
+    @State private var selectedUser: User? = nil
+
+    var body: some View {
+        NavigationView {
+            List(participants) { user in
+                Button {
+                    selectedUser = user
+                } label: {
+                    HStack(spacing: 12) {
+                        avatarView(user)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(user.displayName)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundColor(.primary)
+                            if let year = user.collegeYear {
+                                Text(year.capitalized)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .listStyle(.plain)
+            .navigationTitle("Participants")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                }
+            }
+            .sheet(item: $selectedUser) { user in
+                NavigationView {
+                    ParticipantProfileSheet(user: user)
+                        .environmentObject(authViewModel)
+                        .navigationTitle(user.displayName)
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Done") { selectedUser = nil }
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func avatarView(_ user: User) -> some View {
+        if let pic = user.profilePicture, !pic.isEmpty, let url = URL(string: pic) {
+            AsyncImage(url: url) { phase in
+                if let img = phase.image {
+                    img.resizable().scaledToFill()
+                } else {
+                    initialCircle(user.displayName)
+                }
+            }
+            .frame(width: 40, height: 40)
+            .clipShape(Circle())
+        } else {
+            initialCircle(user.displayName)
+        }
+    }
+
+    private func initialCircle(_ name: String) -> some View {
+        Circle()
+            .fill(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing))
+            .frame(width: 40, height: 40)
+            .overlay(
+                Text(String(name.prefix(1)).uppercased())
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            )
     }
 }

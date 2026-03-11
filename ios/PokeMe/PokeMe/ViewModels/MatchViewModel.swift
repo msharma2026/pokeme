@@ -90,6 +90,7 @@ class MatchViewModel: ObservableObject {
             UserDefaults.standard.set(true, forKey: hasCompletedInitialMatchSyncKey)
 
             matches = response.matches
+            RelationshipStatusCache.shared.populateMatches(response.matches)
             errorMessage = nil
         } catch let error as NetworkError {
             errorMessage = error.errorDescription
