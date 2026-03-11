@@ -54,6 +54,7 @@
 		E5F60718293A4B5C6D7E8FA1 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E2C3D4B5F60718293A4B5C /* NotificationManager.swift */; };
 		E6CC100073B1D69EC90761C3 /* PhoneLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53E0B99F8F6A39A7EBB6B58D /* PhoneLoginView.swift */; };
 		E6E6AF969629511EF1CE4D2D /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 767C403171D42A4932C5DEAB /* RegisterView.swift */; };
+		E7E7E7E7E7E7E7E7E7E7E7E7 /* USPhoneNumberFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7F7E7F7E7F7E7F7E7F7E7F7 /* USPhoneNumberFormatter.swift */; };
 		EBEBEBEBEBEBEBEBEBEBEBEBEB /* CreateMeetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBB5EBB5EBB5EBB5EBB5EBB /* CreateMeetupView.swift */; };
 		EC5D3A1B0F2748956C8E2D4F /* MeetupChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */; };
 		EEAFD4C11CB0CBB260334224 /* Match.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE86E5D860927083FB2C3392 /* Match.swift */; };
@@ -118,6 +119,7 @@
 		AA11AA11AA11AA11AA11AA11 /* AvailabilityHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvailabilityHelper.swift; sourceTree = "<group>"; };
 		AA1234560000000000000001 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		AABC1234AABC1234AABC1234 /* ScheduleViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleViewModel.swift; sourceTree = "<group>"; };
+		E7F7E7F7E7F7E7F7E7F7E7F7 /* USPhoneNumberFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USPhoneNumberFormatter.swift; sourceTree = "<group>"; };
 		AB12AB12AB12AB12AB12AB12 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		B2C3D4E5F60718293A4B5C6D /* MessageNotificationPoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageNotificationPoller.swift; sourceTree = "<group>"; };
 		B5044193EB50C1D1CA5112F5 /* MatchCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchCardView.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 				AA11AA11AA11AA11AA11AA11 /* AvailabilityHelper.swift */,
 				A1E2C3D4B5F60718293A4B5C /* NotificationManager.swift */,
 				AB12AB12AB12AB12AB12AB12 /* Theme.swift */,
+				E7F7E7F7E7F7E7F7E7F7E7F7 /* USPhoneNumberFormatter.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -446,6 +449,7 @@
 				42AC334042D7C4AC3056B06D /* PokeMeApp.swift in Sources */,
 				AA1234560000000000000002 /* OnboardingView.swift in Sources */,
 				E6E6AF969629511EF1CE4D2D /* RegisterView.swift in Sources */,
+				E7E7E7E7E7E7E7E7E7E7E7E7 /* USPhoneNumberFormatter.swift in Sources */,
 				4BD511B7A351B20E233568A0 /* User.swift in Sources */,
 				73DFF8553D8BE009875DA32E /* VerifyCodeView.swift in Sources */,
 				D32DC4DF7044DC7358FF0208 /* ProfileService.swift in Sources */,

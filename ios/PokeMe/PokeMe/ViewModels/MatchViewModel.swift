@@ -15,13 +15,16 @@ class MatchViewModel: ObservableObject {
     private var meetupPollTimer: Timer?
     private var previousMatchIds: Set<String> = []
     private let seenMatchIdsKey = "seenMatchIds"
+    private let hasCompletedInitialMatchSyncKey = "hasCompletedInitialMatchSync"
     private let deletedMatchesKey = "deletedMatchesArchive"
     private let deletedMeetupsKey = "deletedMeetupsArchive"
     private let blockedMatchesKey = "blockedMatchesArchive"
+    private var hasCompletedInitialMatchSync: Bool
 
     init() {
         let saved = UserDefaults.standard.stringArray(forKey: "seenMatchIds") ?? []
         previousMatchIds = Set(saved)
+        hasCompletedInitialMatchSync = UserDefaults.standard.bool(forKey: hasCompletedInitialMatchSyncKey)
         if let data = UserDefaults.standard.data(forKey: deletedMatchesKey),
            let items = try? JSONDecoder().decode([Match].self, from: data) {
             deletedMatches = items
@@ -62,18 +65,27 @@ class MatchViewModel: ObservableObject {
         do {
             let response = try await MatchService.shared.getMatches(token: token)
 
-            // Detect new matches — notifies the OTHER user when a mutual poke creates a match
             let currentMatchIds = Set(response.matches.map { $0.id })
-            let newMatches = response.matches.filter { !previousMatchIds.contains($0.id) }
-            for match in newMatches {
-                NotificationManager.shared.notify(
-                    title: "It's a Match!",
-                    body: "You and \(match.partnerName) both want to play! Start chatting.",
-                    identifier: "match-\(match.id)"
-                )
+            if hasCompletedInitialMatchSync {
+                let newMatches = response.matches.filter {
+                    shouldNotifyForNewMatch($0, previousMatchIds: previousMatchIds)
+                }
+
+                if UserDefaults.standard.bool(forKey: "notificationsEnabled") {
+                    for match in newMatches {
+                        NotificationManager.shared.notify(
+                            title: "It's a Match!",
+                            body: "You and \(match.partnerName) both want to play! Start chatting.",
+                            identifier: "match-\(match.id)"
+                        )
+                    }
+                }
             }
+
             previousMatchIds = currentMatchIds
             UserDefaults.standard.set(Array(currentMatchIds), forKey: seenMatchIdsKey)
+            hasCompletedInitialMatchSync = true
+            UserDefaults.standard.set(true, forKey: hasCompletedInitialMatchSyncKey)
 
             matches = response.matches
             errorMessage = nil
@@ -201,5 +213,14 @@ class MatchViewModel: ObservableObject {
         pollTimer = nil
         meetupPollTimer?.invalidate()
         meetupPollTimer = nil
+    }
+
+    static func shouldNotifyForNewMatch(_ match: Match, previousMatchIds: Set<String>) -> Bool {
+        guard !previousMatchIds.contains(match.id) else { return false }
+        return match.lastMessage == nil
+    }
+
+    private func shouldNotifyForNewMatch(_ match: Match, previousMatchIds: Set<String>) -> Bool {
+        Self.shouldNotifyForNewMatch(match, previousMatchIds: previousMatchIds)
     }
 }
