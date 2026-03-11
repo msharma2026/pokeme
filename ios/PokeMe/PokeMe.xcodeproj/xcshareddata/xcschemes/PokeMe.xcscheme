@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "E8A0398636A44A4869DA1A5E"
-               BuildableName = "PokeMe.app"
+               BuildableName = "DavisPokeMe.app"
                BlueprintName = "PokeMe"
                ReferencedContainer = "container:PokeMe.xcodeproj">
             </BuildableReference>
@@ -57,7 +57,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E8A0398636A44A4869DA1A5E"
-            BuildableName = "PokeMe.app"
+            BuildableName = "DavisPokeMe.app"
             BlueprintName = "PokeMe"
             ReferencedContainer = "container:PokeMe.xcodeproj">
          </BuildableReference>
@@ -74,7 +74,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "E8A0398636A44A4869DA1A5E"
-            BuildableName = "PokeMe.app"
+            BuildableName = "DavisPokeMe.app"
             BlueprintName = "PokeMe"
             ReferencedContainer = "container:PokeMe.xcodeproj">
          </BuildableReference>
