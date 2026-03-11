@@ -8,6 +8,7 @@ automatic_scaling:
 
 env_variables:
   JWT_SECRET: "your-secret-key-change-in-production"
+  ANTHROPIC_API_KEY: "your-anthropic-api-key-here"
 
 handlers:
   - url: /.*

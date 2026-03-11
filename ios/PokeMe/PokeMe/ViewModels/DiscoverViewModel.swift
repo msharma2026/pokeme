@@ -121,7 +121,6 @@ class DiscoverViewModel: ObservableObject {
             if profile.recommendationScore != nil {
                 return profile
             }
-
             var mutable = profile
             let recommendation = scoreCompatibility(viewer: viewer, candidate: profile)
             mutable.recommendationScore = recommendation.score
