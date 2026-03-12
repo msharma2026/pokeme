@@ -177,7 +177,7 @@ Show reliability and activity indicators for players and meetups
 A quick way for students to find real people for basketball and pickup sports
 
 
-# Manav
+# Manav - First Interview
 Interviewed Matias.
 Date/time:
 March 11, 2026, Afternoon
@@ -225,7 +225,7 @@ He said that he would just correct the issues with loading, and make it more cle
 "It's an app for helping students find sports events"
 
 
-# Manav
+# Manav - Second Interview
 Interviewed Yaseen
 Date/time:
 March 11, 2026, Evening
