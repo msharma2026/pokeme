@@ -676,10 +676,18 @@ struct MatchRow: View {
     let currentUserId: String
     var onAvatarTap: (() -> Void)? = nil
 
-    /// True when the partner sent the most recent message (proxy for "unread")
+    /// True when the partner's last message arrived after the user last opened the chat.
     private var hasUnread: Bool {
-        guard let last = match.lastMessage else { return false }
-        return last.senderId != currentUserId
+        guard let last = match.lastMessage, last.senderId != currentUserId else { return false }
+        let isoFull = ISO8601DateFormatter()
+        isoFull.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoBasic = ISO8601DateFormatter()
+        isoBasic.formatOptions = [.withInternetDateTime]
+        let msgDate = isoFull.date(from: last.createdAt) ?? isoBasic.date(from: last.createdAt) ?? Date.distantFuture
+        guard let lastReadStr = UserDefaults.standard.string(forKey: "chatLastRead_\(match.id)"),
+              let lastRead = isoFull.date(from: lastReadStr) ?? isoBasic.date(from: lastReadStr)
+        else { return true }
+        return msgDate > lastRead
     }
 
     var body: some View {

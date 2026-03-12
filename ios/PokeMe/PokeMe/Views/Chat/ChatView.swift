@@ -155,6 +155,7 @@ struct ChatView: View {
                 }
             }
             .onAppear {
+                markMatchRead()
                 viewModel.configure(
                     currentUserId: authViewModel.user?.id ?? "",
                     matchId: matchId
@@ -165,6 +166,7 @@ struct ChatView: View {
                 viewModel.startPolling(token: authViewModel.getToken())
             }
             .onDisappear {
+                markMatchRead()
                 viewModel.stopPolling()
                 Task {
                     await viewModel.stopTyping(token: authViewModel.getToken())
@@ -256,6 +258,12 @@ struct ChatView: View {
                 Text("Are you sure you want to cancel this session? The other person will be notified.")
             }
         }
+    }
+
+    private func markMatchRead() {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        UserDefaults.standard.set(iso.string(from: Date()), forKey: "chatLastRead_\(matchId)")
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
