@@ -178,7 +178,7 @@ A quick way for students to find real people for basketball and pickup sports
 
 
 # Manav
-interviewed Matias.
+Interviewed Matias.
 Date/time:
 March 11, 2026, Afternoon
 
@@ -224,31 +224,33 @@ He rated the difficulty was 2 out of 5, but said the bugs present made it more d
 He said that he would just correct the issues with loading, and make it more clear how poking works.
 "It's an app for helping students find sports events"
 
+
+# Manav
+Interviewed Yaseen
+Date/time:
+March 11, 2026, Evening
+
 Who:
-Plays basketball occasionally
+Plays an assortment of things, but recently table tennis
 
 Questions:
-Walk me through how you would use the app if your friends were busy and you wanted to play basketball. (Pain)
+Walk me through how you would use the app if your friends were busy and you wanted to play a sport. (Pain)
 When you first opened the app, how did you think it would help you resolve this? (Promise)
 What made you doubtful or slowed you down while using it? (Anxiety)
 If you had to stop using the app and go back to the old way, what would be easier? (Inertia)
 
 Predictions:
-Pain: Hard to organize events b/c of class schedules
+Pain: Not many friends who play ping pong
 Promise: The app would help people in similar situations connect and play together
 Anxiety: Not enough people on there
-Inertia: It is easier to go to the basketball court in person and ask
+Inertia: Rather not play or just find a club
 
 Answers:
 
-It looks like an sports/events oriented app that helps you find scheduled games and find solo partners to play with
-
 Started on the meetups page
-Thought it was very intuitive, except profile refreshing and loading was slow
-Joined a bicycling event. Basketball event was full.
+Did not find any events that he would join. There were no ping pong events, and everything else was scheduled at either a bad time or he wasn't interested in
 Sent a poke to someone (did not get a reply yet)
-Thought it was unclear if you poke multiple times or not
-He did think because there were not that many users, that it would be quicker to go to a court and ask
+He thought that there wasn't enough people on the app who had the same interests as him
 
 Questions:
 
@@ -260,8 +262,8 @@ How would you describe the app in one sentence?
 
 Answers:
 
-While he did not join basketball, he found a cool cycling event.
-He thought discover was cool for messaging people, but not really playing.
-He rated the difficulty was 2 out of 5, but said the bugs present made it more difficult.
-He said that he would just correct the issues with loading, and make it more clear how poking works.
-"It's an app for helping students find sports events"
+He did not find the app useful for his interests.
+He thought that the discover page was more for socialization, and didn't see it as the primary purpose
+He rated the difficulty was 3 out of 5. 
+He said it would need more people on there to be useful to him, as it seemed mostly for basketball/football and traditional sports
+"It organizes sports events for people with no one to play with"
