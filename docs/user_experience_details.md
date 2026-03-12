@@ -346,3 +346,227 @@ Answers:
 -He pointed out that the AI match score could use more work when it came to explaining what you and the another user had it common, as Ethan was finding more of casual play while his matches were typically people that were trying to improve in the sport or were looking to play an entirely other sport
 -He said he would be down to give it another try once the app populates with more people 
 
+# Kelvin - First Interview
+interviewed Toby
+
+Date/time:
+3/10/2026 4:00 PM
+
+Who:
+Toby is a 3rd Year UCD student, who plays badminton and is active.
+
+Questions:
+
+Walk me through how you would use the app if your friends were busy and you wanted to play a sport. (Pain)
+
+When you first opened the app, what did you think it would help you do? (Promise)
+
+What made you doubtful or slowed you down while using it? (Anxiety)
+
+If you had to stop using the app and go back to the old way, what would be easier? (Inertia)
+
+Predictions:
+
+Pain:
+Might feel awkward asking strangers to play badminton and may not always have enough friends available to play.
+
+Promise:
+The app will help him find people at Davis who want to play badminton and make it easier to organize games.
+
+Anxiety:
+He might worry about meeting strangers from the app or whether people are actually active.
+
+Inertia:
+If the app is slow or confusing, he might just go to the ARC and try to find people playing.
+
+Answers:
+
+I would join a meetup to play a sport.
+
+Something related to sports, but I didn't think it was an actual meetup or scheduling thing.
+
+It was pretty straight forward, but I don't like the phone number. I would prefer school email. Phone number is not a bad idea either though.
+
+It would be easier to use the app to get a feel of the people who I am meeting with, but there is still anxiety involved with meeting these new strangers.
+
+Questions:
+
+Did you reach the point where the app felt useful? How?
+
+What did you think of the discovery page?
+
+What would you do next after using it?
+
+How difficult was it to use?
+
+What would you change?
+
+How would you describe the app in one sentence?
+
+Answers:
+
+For getting to know people yes. I think it is good for people who are into sports.
+
+I think it is good, and I like how it is straight forward it is. I like how it tells me the information I need to know to determine if I want to play with someone.
+
+After using the discovery page, I would try to match up with someone on it and talk to them and try to meet up with them to play the sport.
+
+Difficulty rating:
+1/5
+
+Changes suggested:
+Rename the Poke to something else to make it more self explanatory
+
+One sentence description:
+Tinder but for friendly sports.
+
+# Kelvin - Second Interview
+interviewed Andrew.
+
+Date/time:
+3/10/2026 4:00 PM
+
+Who:
+UC Davis student interested in recreational sports and organized meetups.
+
+Questions:
+
+Walk me through how you would use the app if your friends were busy and you wanted to play a sport. (Pain)
+
+When you first opened the app, what did you think it would help you do? (Promise)
+
+What made you doubtful or slowed you down while using it? (Anxiety)
+
+If you had to stop using the app and go back to the old way, what would be easier? (Inertia)
+
+Predictions:
+
+Pain:
+May have trouble finding people interested in the same sports when his friends are busy.
+
+Promise:
+The app will make it easier to discover sports meetups and connect with people who want to play.
+
+Anxiety:
+He might question whether enough people are using the app for it to be useful.
+
+Inertia:
+If there are not many active users, he may prefer organizing sports through friends or existing groups.
+
+Answers:
+
+Look in meetups for any pick ups for the sports I want to play.
+
+It seemed like an easy way to get into recreational sports, and organize specific meetups and games. Almost like an online running/sports club.
+
+There should be time slots instead of just morning, afternoon, and evening. There was a pickle ball app I used to use that did time slots and it was good.
+
+The app realistically is easier, the only hard part is that there needs to be a lot of people using it so it is active.
+
+Questions:
+
+Did you reach the point where the app felt useful? How?
+
+What did you think of the discovery page?
+
+What would you do next after using it?
+
+How difficult was it to use?
+
+What would you change?
+
+How would you describe the app in one sentence?
+
+Answers:
+
+Yes, it is useful it seems like a very easy way to get into a sport I am interested in and meet new people. If there is a sport I am interested in, but my friends don't want to play the sport, this is an easy way of solving that issue. I also like the percentage match thing.
+
+I think it is cool. I like the AI matching score.
+
+Play sports with the people I meet. This is almost like a dating app, I might use it to try to get girls.
+
+Difficulty rating:
+2/5
+
+Changes suggested:
+Timeslots instead of morning, evening, afternoon.
+More sport options localized to Davis (like pickleball)
+
+One sentence description:
+A fun and interactive way to meet pepole and get into sports.
+
+# Kelvin - Third Interview
+
+interviewed Caitilin
+
+Date/time:
+3/10/2026 4:00 PM
+
+Who:
+UC Davis student interested in casual sports and meeting new people.
+
+Questions:
+
+Walk me through how you would use the app if your friends were busy and you wanted to play a sport. (Pain)
+
+When you first opened the app, what did you think it would help you do? (Promise)
+
+What made you doubtful or slowed you down while using it? (Anxiety)
+
+If you had to stop using the app and go back to the old way, what would be easier? (Inertia)
+
+Predictions:
+
+Pain:
+May want to play sports casually but not always have a group available.
+
+Promise:
+The app will help her meet new people and easily find pickup games.
+
+Anxiety:
+No girls on the app, so she might feel uncomfortable.
+
+Inertia:
+She may prefer existing clubs or friends if the app feels confusing or takes too long to find a game.
+
+Answers:
+
+I would use it to join pick up games already scheduled.
+
+It would help me meet more people and make new connections.
+
+When I first joined, it put me on the discover page so I thought I would actually have to poke people, but I could just press meetup instead to find games I am interested in. There are also no girls on the app, so it is less comfortable for me.
+
+Yeah because people already organize when to play and where to play.
+
+Questions:
+
+Did you reach the point where the app felt useful? How?
+
+What did you think of the discovery page?
+
+What would you do next after using it?
+
+How difficult was it to use?
+
+What would you change?
+
+How would you describe the app in one sentence?
+
+Answers:
+
+Yes, it is a great way to meet people and meet new friends. There is casual play instead of having to join a tryhard club. Also based on my availability instead of having to join a club.
+
+It is cute, I like how they do a compatibility match. I just wish they would show the bios of people already.
+
+I would try signing up for my first meet up and poke people based on their profile to set up more dedicated time. I wouldn't use poke before meetups.
+
+Difficulty rating:
+2/5
+
+Changes suggested:
+Have the profile below the picture, also put requirements on the dimensions of the photo. Automatic resizng of hte photos.
+Option to change the color scheme.
+
+One sentence description:
+Very fun and very cute way to meet new people.
