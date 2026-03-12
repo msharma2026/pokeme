@@ -268,3 +268,81 @@ He thought that the discover page was more for socialization, and didn't see it 
 He rated the difficulty was 3 out of 5. 
 He said it would need more people on there to be useful to him, as it seemed mostly for basketball/football and traditional sports
 "It organizes sports events for people with no one to play with"
+
+# Eugene 1
+Vin is a former high school basketball player who's looking to get back to playing more basketball and wants to find more casual players but fit to his current skill level
+
+Q: How has your journey been, getting back to playing basketball after such a long time. Did you manage to find players of your skill level? -Pain
+
+Q: When you first opened and used the app was there anything that caught your attention or hoped that it could help you with?
+-Promise
+
+Q: What were some hesitations or skepticism did you have when using the app?
+-Anxiety
+
+Q: What made you think that going back to the old way of finding players was better for you?
+-Inertia
+
+Predictions:
+Pain: It's tough to both find available players and have them be around the same skill level as him
+Promise: the app would allow him to quickly find both players and matches
+Anxiety: tough to see if players had similar experience as him or did not show up to the meetups
+Inertia: easier to head to the court and ask people already there to play pick up basketball
+
+Answers:
+-He went to the ARC and played some pick up ball quite a few times but most of the time it ended up with him being matched with novice players who didn't have much experience or people who were way too serious about the game
+-Was intrigued with the abilitiy to join public meetups and being able to see the current players who joined and having a group chat to interact with them, hoping to be able to connect with a few people to play basketball on the regular with them
+-He wasn't too excited about being able to see the different tiered skill levels on the players profiles as he mentioned that it felt really vague and could be misleading
+-He said that although the app would be able to find matchups that can fit his schedule, he could always just go to the court on his own time and find people already there to play a game with. He also already knows some of the regulars after playing there a few times. 
+
+Questions regarding the app:
+How was using the app? Did it feel intuitive finding matchups and players?
+Did you manage to match with anyone and agree to play a basketball session with them?
+How many meetups did you join and how many did you end up going to?
+Did you think the "poking" idea is a good feature?
+
+Answers:
+-He thought the app felt responsive and all the features worked as intended. He felt that it was pretty simple to find meetups and the details about the meetups along with the players that agreed to join the meetups. 
+-He said he did match with people but was hesitant with reaching out to them once they matched up as he felt it was easier to join a meetup and connect with the players already in the group chat. 
+-He said he joined 2 of them but has only gone to one so far. He mentioned that only 2/4 of the people actually showed up
+-He felt that the "poking" idea was not ideal for group sports such as basketball but could see it being useful for other sports where you need a partner to play with. 
+
+
+# Eugene 2
+Ethan is someone who regularly gyms but wants to find other people to casually try and play new sports with
+
+Q: How do you find people to play with? Is it hard for you to find people that are in the same situation as you? -Pain
+
+Q: When I told you that with this app you could easily match and connect with other people to play sports with, were you excited?
+-Promise
+
+Q: Were you comfortable with using the "poking" feature on the app and talking to people?
+-Anxiety
+
+Q: What made you think that it was just easier to ask around than to use the app to find people?
+-Inertia
+
+Predictions:
+Pain: Difficult to find people that are interested in playing similar sports and are willing to play with a novice
+Promise: the app would allow him to match with novice level players 
+Anxiety: unsure if people would cancel on him last minute or unable to find people that would be interested in playing with him
+Inertia: would be more reassuring to him to find friends or mutuals to play with him or join the different sport clubs
+
+Answers:
+-He mentions that he wants to play badminton but doesn't know much people that are playing and also sees only pro players playing in the gym
+-Thought it was cool to be able to see other people's different interest in sports and time availabity and being able to match with them
+-He mentioned that the AI scorer was a little vague about how the other person is compatible and that it would be better if there was more information about the users to get to know them more before matching
+-Mentioned that he would be easier to join the clubs so that there was more people of varying skill levels with the same interest instead of having to meet people one by one through the matches if there were no available public meetups
+
+Questions regarding the app:
+How was using the app? Did it feel intuitive finding matchups and players?
+Did you find any meetups or anyone that eventually agreed to play a badminton session with you?
+What did you feel the app could had improved?
+Would you use this to find players in the future?
+
+Answers:
+-He mentioned that the interface felt really simple and he liked being able to schedule sessions in the chat with the people he matched. He did mention that he would like to know more about the other players before matching with them. 
+-He said although he got to talk with one of his matches the other person did not agree to his proposed session due to time availability constraints between them. He also mentioned that there were no current public badminton meetups in the app as well.
+-He pointed out that the AI match score could use more work when it came to explaining what you and the another user had it common, as Ethan was finding more of casual play while his matches were typically people that were trying to improve in the sport or were looking to play an entirely other sport
+-He said he would be down to give it another try once the app populates with more people 
+
