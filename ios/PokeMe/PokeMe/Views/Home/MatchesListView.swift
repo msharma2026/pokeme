@@ -70,6 +70,8 @@ struct MatchesListView: View {
                                 Section {
                                     filterPickerRow
                                         .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 6, trailing: 16))
+                                        .listRowSeparator(.hidden)
+                                        .listSectionSeparator(.hidden)
                                 }
 
                                 // Meetup group chats
