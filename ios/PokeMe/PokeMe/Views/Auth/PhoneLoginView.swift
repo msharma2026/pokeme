@@ -12,19 +12,6 @@ struct PhoneLoginView: View {
     @State private var bounceEmoji = false
     private let sportEmojis = ["🏀", "⚽", "🎾", "🏐", "🏸", "🏊", "🚴", "🏓"]
 
-    private func formatPhoneNumber(_ digits: String) -> String {
-        guard !digits.isEmpty else { return "" }
-        var result = "("
-        let count = digits.count
-        result += String(digits.prefix(3))
-        if count >= 3 { result += ") " }
-        if count > 3 { result += String(digits.dropFirst(3).prefix(3)) }
-        if count >= 6 { result += "-" }
-        if count > 6 { result += String(digits.dropFirst(6)) }
-        return result
-    }
-
-
     var body: some View {
         ZStack {
             // Animated gradient background
@@ -89,13 +76,12 @@ struct PhoneLoginView: View {
                             .keyboardType(.phonePad)
                             .textContentType(.telephoneNumber)
                             .onChange(of: formattedPhone) { newValue in
-                                let currentFormatted = formatPhoneNumber(rawDigits)
-                                if newValue.count < currentFormatted.count {
-                                    if !rawDigits.isEmpty { rawDigits = String(rawDigits.dropLast()) }
-                                } else {
-                                    rawDigits = String(newValue.filter { $0.isNumber }.prefix(10))
+                                let normalizedDigits = USPhoneNumberFormatter.normalize(newValue)
+                                if rawDigits != normalizedDigits {
+                                    rawDigits = normalizedDigits
                                 }
-                                let corrected = formatPhoneNumber(rawDigits)
+
+                                let corrected = USPhoneNumberFormatter.format(normalizedDigits)
                                 if formattedPhone != corrected { formattedPhone = corrected }
                             }
                     }

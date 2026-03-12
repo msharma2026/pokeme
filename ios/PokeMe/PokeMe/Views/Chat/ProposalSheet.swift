@@ -3,7 +3,7 @@ import MapKit
 
 // MARK: - MapKit autocomplete helper
 
-private class LocationSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
+class LocationSearchCompleter: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
     @Published var results: [MKLocalSearchCompletion] = []
     private let completer = MKLocalSearchCompleter()
 

@@ -155,33 +155,6 @@ struct DiscoverCardView: View {
                 // ── Primary CTA: Poke ──
                 pokeButton
 
-                // ── Secondary actions row ──
-                HStack {
-                    if user.recommendationScore != nil {
-                        Button(action: { showWhySheet = true }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 12))
-                                Text("Why this match?")
-                                    .font(.caption)
-                                    .fontWeight(.medium)
-                            }
-                            .foregroundColor(.secondary)
-                        }
-                    }
-                    Spacer()
-                    Button(action: onSkip) {
-                        HStack(spacing: 4) {
-                            Text("Skip")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .semibold))
-                        }
-                        .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.top, 2)
             }
             .padding(16)
 
@@ -503,8 +476,9 @@ struct DiscoverCardView: View {
             ("majorBio", "Similar Interests", 15, "brain.head.profile", .purple),
         ]
         return map.compactMap { item in
-            guard let score = breakdown[item.key] else { return nil }
-            return ScoreBreakdownItem(label: item.label, score: score, maxScore: item.max, icon: item.icon, color: item.color)
+            guard let rawScore = breakdown[item.key] else { return nil }
+            let displayScore = (rawScore * item.max / 100).rounded()
+            return ScoreBreakdownItem(label: item.label, score: displayScore, maxScore: item.max, icon: item.icon, color: item.color)
         }
     }
 

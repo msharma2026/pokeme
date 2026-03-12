@@ -85,3 +85,31 @@ class MeetupService {
         )
     }
 }
+
+// MARK: - MeetupParticipantsCache
+// Avoids re-fetching the participant list every time a card is expanded
+// or a detail sheet is opened. Entries expire after 5 minutes.
+
+final class MeetupParticipantsCache {
+    static let shared = MeetupParticipantsCache()
+    private init() {}
+
+    private var cache: [String: [User]] = [:]
+    private var fetchTimes: [String: Date] = [:]
+    private let ttl: TimeInterval = 300 // 5 minutes
+
+    func participants(for meetupId: String) -> [User]? {
+        guard let time = fetchTimes[meetupId], Date().timeIntervalSince(time) < ttl else { return nil }
+        return cache[meetupId]
+    }
+
+    func store(_ participants: [User], for meetupId: String) {
+        cache[meetupId] = participants
+        fetchTimes[meetupId] = Date()
+    }
+
+    func invalidate(meetupId: String) {
+        cache.removeValue(forKey: meetupId)
+        fetchTimes.removeValue(forKey: meetupId)
+    }
+}

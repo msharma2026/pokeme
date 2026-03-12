@@ -2,6 +2,85 @@ import XCTest
 @testable import PokeMe
 
 final class PokeMeTests: XCTestCase {
+    func testUSPhoneNumberNormalizePlainTenDigits() {
+        XCTAssertEqual(USPhoneNumberFormatter.normalize("5305550000"), "5305550000")
+    }
+
+    func testUSPhoneNumberNormalizeDropsLeadingCountryCode() {
+        XCTAssertEqual(USPhoneNumberFormatter.normalize("+15305550000"), "5305550000")
+    }
+
+    func testUSPhoneNumberNormalizeFormattedLeadingCountryCode() {
+        XCTAssertEqual(USPhoneNumberFormatter.normalize("1 (530) 555-0000"), "5305550000")
+    }
+
+    func testUSPhoneNumberNormalizeClampsExtraDigits() {
+        XCTAssertEqual(USPhoneNumberFormatter.normalize("+1 (530) 555-0000123"), "5305550000")
+    }
+
+    func testNewMatchNotificationTriggersForUnseenMatchWithoutContact() {
+        let match = Match(
+            id: "match-new",
+            partnerId: "partner-1",
+            partnerName: "Jamie",
+            partnerSports: nil,
+            partnerCollegeYear: nil,
+            partnerProfilePicture: nil,
+            partnerBio: nil,
+            partnerMajor: nil,
+            partnerAvailability: nil,
+            partnerSocials: nil,
+            status: "active",
+            lastMessage: nil,
+            createdAt: "2026-03-11T00:00:00Z"
+        )
+
+        XCTAssertTrue(MatchViewModel.shouldNotifyForNewMatch(match, previousMatchIds: []))
+    }
+
+    func testNewMatchNotificationSkipsExistingMatch() {
+        let match = Match(
+            id: "match-existing",
+            partnerId: "partner-2",
+            partnerName: "Taylor",
+            partnerSports: nil,
+            partnerCollegeYear: nil,
+            partnerProfilePicture: nil,
+            partnerBio: nil,
+            partnerMajor: nil,
+            partnerAvailability: nil,
+            partnerSocials: nil,
+            status: "active",
+            lastMessage: nil,
+            createdAt: "2026-03-11T00:00:00Z"
+        )
+
+        XCTAssertFalse(MatchViewModel.shouldNotifyForNewMatch(match, previousMatchIds: ["match-existing"]))
+    }
+
+    func testNewMatchNotificationSkipsMatchesWithConversationHistory() {
+        let match = Match(
+            id: "match-contacted",
+            partnerId: "partner-3",
+            partnerName: "Morgan",
+            partnerSports: nil,
+            partnerCollegeYear: nil,
+            partnerProfilePicture: nil,
+            partnerBio: nil,
+            partnerMajor: nil,
+            partnerAvailability: nil,
+            partnerSocials: nil,
+            status: "active",
+            lastMessage: LastMessage(
+                text: "Hey, want to play tomorrow?",
+                senderId: "partner-3",
+                createdAt: "2026-03-11T00:05:00Z"
+            ),
+            createdAt: "2026-03-11T00:00:00Z"
+        )
+
+        XCTAssertFalse(MatchViewModel.shouldNotifyForNewMatch(match, previousMatchIds: []))
+    }
 
     func testUserDecoding() throws {
         let json = """

@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 struct CreateMeetupView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -14,6 +15,8 @@ struct CreateMeetupView: View {
     @State private var selectedSkillLevels: Set<String> = []
     @State private var playerLimit = 6
     @State private var isSaving = false
+    @StateObject private var locationCompleter = LocationSearchCompleter()
+    @State private var skipLocationSearch = false
 
     init(viewModel: MeetupViewModel, prefill: Meetup? = nil) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
@@ -68,7 +71,48 @@ struct CreateMeetupView: View {
                 Section("When & Where") {
                     DatePicker("Date", selection: $date, in: Date()..., displayedComponents: .date)
                     DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
-                    TextField("Location (e.g. ARC Gym)", text: $location)
+                }
+
+                Section("Location (optional)") {
+                    HStack(spacing: 8) {
+                        Image(systemName: "mappin.circle.fill")
+                            .foregroundColor(.orange)
+                        TextField("Search or type a location…", text: $location)
+                            .onChange(of: location) { query in
+                                if skipLocationSearch { skipLocationSearch = false; return }
+                                locationCompleter.search(query)
+                            }
+                        if !location.isEmpty {
+                            Button {
+                                location = ""
+                                locationCompleter.results = []
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(Color(.systemGray3))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    ForEach(locationCompleter.results, id: \.title) { result in
+                        Button {
+                            skipLocationSearch = true
+                            location = result.title
+                            locationCompleter.results = []
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(result.title)
+                                    .foregroundColor(.primary)
+                                    .font(.subheadline)
+                                if !result.subtitle.isEmpty {
+                                    Text(result.subtitle)
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
 
                 Section("Skill Levels") {

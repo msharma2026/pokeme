@@ -41,6 +41,16 @@ struct MatchesListView: View {
         viewModel.deletedMatches.isEmpty && viewModel.deletedMeetups.isEmpty && viewModel.blockedMatches.isEmpty
     }
 
+    private var filterPickerRow: some View {
+        Picker("Filter", selection: $selectedFilterRaw) {
+            ForEach(MatchFilter.allCases, id: \.self) { filter in
+                Text(filter.rawValue).tag(filter.rawValue)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.vertical, 4)
+    }
+
     var body: some View {
         NavigationView {
             Group {
@@ -52,134 +62,136 @@ struct MatchesListView: View {
                 } else if isEmpty && selectedFilter != .deleted {
                     emptyState
                 } else {
-                    VStack(spacing: 0) {
-                        // Segmented control
-                        Picker("Filter", selection: $selectedFilterRaw) {
-                            ForEach(MatchFilter.allCases, id: \.self) { filter in
-                                Text(filter.rawValue).tag(filter.rawValue)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-
+                    Group {
                         if selectedFilter == .deleted {
                             deletedTab
                         } else {
-                        List {
-                            // Meetup group chats
-                            if !filteredGroupChats.isEmpty {
-                                Section("Group Chats") {
-                                    ForEach(filteredGroupChats) { meetup in
-                                        Button(action: { selectedGroupChat = meetup }) {
-                                            MeetupGroupChatRow(
-                                                meetup: meetup,
-                                                onAvatarTap: { selectedGroupMembers = meetup }
-                                            )
-                                        }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                            Button(role: .destructive) {
-                                                meetupPendingLeave = meetup
-                                            } label: {
-                                                Label(meetup.hostId == currentUserId ? "Delete" : "Leave", systemImage: "rectangle.portrait.and.arrow.right")
-                                            }
-                                            Button {
-                                                selectedGroupMembers = meetup
-                                            } label: {
-                                                Label("Members", systemImage: "person.3")
-                                            }
-                                            .tint(.blue)
-                                        }
-                                        .contextMenu {
-                                            Button {
-                                                selectedGroupMembers = meetup
-                                            } label: {
-                                                Label("View Members", systemImage: "person.3")
-                                            }
-                                            Button(role: .destructive) {
-                                                meetupPendingLeave = meetup
-                                            } label: {
-                                                Label(meetup.hostId == currentUserId ? "Delete Group" : "Leave Group", systemImage: "rectangle.portrait.and.arrow.right")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 1-on-1 matches
-                            if !filteredMatches.isEmpty {
-                                Section("1-on-1") {
-                                    ForEach(filteredMatches) { match in
-                                        Button(action: { selectedMatch = match }) {
-                                            MatchRow(
-                                                match: match,
-                                                currentUserId: currentUserId,
-                                                onAvatarTap: { selectedProfileMatch = match }
-                                            )
-                                        }
-                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                            Button(role: .destructive) {
-                                                matchPendingDelete = match
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
-                                            }
-                                            Button {
-                                                matchPendingBlock = match
-                                            } label: {
-                                                Label("Block", systemImage: "hand.raised")
-                                            }
-                                            .tint(.indigo)
-                                            Button {
-                                                selectedProfileMatch = match
-                                            } label: {
-                                                Label("Profile", systemImage: "person.circle")
-                                            }
-                                            .tint(.blue)
-                                        }
-                                        .contextMenu {
-                                            Button {
-                                                selectedProfileMatch = match
-                                            } label: {
-                                                Label("View Profile", systemImage: "person.circle")
-                                            }
-                                            Button {
-                                                matchPendingBlock = match
-                                            } label: {
-                                                Label("Block", systemImage: "hand.raised")
-                                            }
-                                            Button(role: .destructive) {
-                                                matchPendingDelete = match
-                                            } label: {
-                                                Label("Delete", systemImage: "trash")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Empty filter state
-                            if filteredMatches.isEmpty && filteredGroupChats.isEmpty && !isEmpty {
+                            List {
                                 Section {
-                                    Text("No \(selectedFilter.rawValue.lowercased()) chats yet")
-                                        .foregroundColor(.secondary)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .padding(.vertical, 20)
-                                        .listRowBackground(Color.clear)
+                                    filterPickerRow
+                                        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 6, trailing: 16))
+                                }
+
+                                // Meetup group chats
+                                if !filteredGroupChats.isEmpty {
+                                    Section("Group Chats") {
+                                        ForEach(filteredGroupChats) { meetup in
+                                            Button(action: {
+                                                viewModel.markGroupChatRead(meetupId: meetup.id)
+                                                selectedGroupChat = meetup
+                                            }) {
+                                                MeetupGroupChatRow(
+                                                    meetup: meetup,
+                                                    unreadCount: viewModel.groupChatUnreadCounts[meetup.id] ?? 0,
+                                                    onAvatarTap: { selectedGroupMembers = meetup }
+                                                )
+                                            }
+                                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                                Button(role: .destructive) {
+                                                    meetupPendingLeave = meetup
+                                                } label: {
+                                                    Label(meetup.hostId == currentUserId ? "Delete" : "Leave", systemImage: "rectangle.portrait.and.arrow.right")
+                                                }
+                                                Button {
+                                                    selectedGroupMembers = meetup
+                                                } label: {
+                                                    Label("Members", systemImage: "person.3")
+                                                }
+                                                .tint(.blue)
+                                            }
+                                            .contextMenu {
+                                                Button {
+                                                    selectedGroupMembers = meetup
+                                                } label: {
+                                                    Label("View Members", systemImage: "person.3")
+                                                }
+                                                Button(role: .destructive) {
+                                                    meetupPendingLeave = meetup
+                                                } label: {
+                                                    Label(meetup.hostId == currentUserId ? "Delete Group" : "Leave Group", systemImage: "rectangle.portrait.and.arrow.right")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 1-on-1 matches
+                                if !filteredMatches.isEmpty {
+                                    Section("1-on-1") {
+                                        ForEach(filteredMatches) { match in
+                                            Button(action: { selectedMatch = match }) {
+                                                MatchRow(
+                                                    match: match,
+                                                    currentUserId: currentUserId,
+                                                    onAvatarTap: { selectedProfileMatch = match }
+                                                )
+                                            }
+                                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                                Button(role: .destructive) {
+                                                    matchPendingDelete = match
+                                                } label: {
+                                                    Label("Delete", systemImage: "trash")
+                                                }
+                                                Button {
+                                                    matchPendingBlock = match
+                                                } label: {
+                                                    Label("Block", systemImage: "hand.raised")
+                                                }
+                                                .tint(.indigo)
+                                                Button {
+                                                    selectedProfileMatch = match
+                                                } label: {
+                                                    Label("Profile", systemImage: "person.circle")
+                                                }
+                                                .tint(.blue)
+                                            }
+                                            .contextMenu {
+                                                Button {
+                                                    selectedProfileMatch = match
+                                                } label: {
+                                                    Label("View Profile", systemImage: "person.circle")
+                                                }
+                                                Button {
+                                                    matchPendingBlock = match
+                                                } label: {
+                                                    Label("Block", systemImage: "hand.raised")
+                                                }
+                                                Button(role: .destructive) {
+                                                    matchPendingDelete = match
+                                                } label: {
+                                                    Label("Delete", systemImage: "trash")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Empty filter state
+                                if filteredMatches.isEmpty && filteredGroupChats.isEmpty && !isEmpty {
+                                    Section {
+                                        Text("No \(selectedFilter.rawValue.lowercased()) chats yet")
+                                            .foregroundColor(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                            .padding(.vertical, 20)
+                                            .listRowBackground(Color.clear)
+                                    }
                                 }
                             }
+                            .listStyle(.plain)
                         }
-                        .listStyle(.plain)
-                        } // end else (non-deleted list)
                     }
                 }
             }
             .navigationTitle("Matches")
+            .refreshable {
+                await refreshMatches()
+            }
             .task {
-                await viewModel.fetchMatches(token: authViewModel.getToken())
+                await refreshMatches()
             }
             .onAppear {
                 Task {
-                    await viewModel.fetchMatches(token: authViewModel.getToken())
+                    await refreshMatches()
                 }
                 viewModel.startPolling(token: authViewModel.getToken())
             }
@@ -279,6 +291,11 @@ struct MatchesListView: View {
                 .frame(maxWidth: .infinity)
             } else {
                 List {
+                    Section {
+                        filterPickerRow
+                            .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 6, trailing: 16))
+                    }
+
                     if !viewModel.deletedMatches.isEmpty {
                         Section("Deleted 1-on-1") {
                             ForEach(viewModel.deletedMatches) { match in
@@ -387,51 +404,63 @@ struct MatchesListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(colors: [.orange.opacity(0.15), .pink.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(animateEmpty ? 1.1 : 1.0)
-                    .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: animateEmpty)
+        ScrollView {
+            VStack(spacing: 20) {
+                filterPickerRow
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
 
-                Image(systemName: "message.badge.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(
-                        .linearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-            }
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(colors: [.orange.opacity(0.15), .pink.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(animateEmpty ? 1.1 : 1.0)
+                        .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: animateEmpty)
 
-            Text("No matches yet")
-                .font(.title2)
-                .fontWeight(.bold)
-
-            Text("Poke people in Discover to get matched!")
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-
-            Button(action: {
-                NotificationCenter.default.post(name: NSNotification.Name("SwitchToDiscover"), object: nil)
-            }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "sportscourt.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text("Go to Discover")
-                        .fontWeight(.semibold)
+                    Image(systemName: "message.badge.fill")
+                        .font(.system(size: 50))
+                        .foregroundStyle(
+                            .linearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .background(LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing))
-                .foregroundColor(.white)
-                .cornerRadius(25)
-                .shadow(color: .orange.opacity(0.3), radius: 8, x: 0, y: 4)
+
+                Text("No matches yet")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("Poke people in Discover to get matched!")
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                Button(action: {
+                    NotificationCenter.default.post(name: NSNotification.Name("SwitchToDiscover"), object: nil)
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sportscourt.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Go to Discover")
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing))
+                    .foregroundColor(.white)
+                    .cornerRadius(25)
+                    .shadow(color: .orange.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
             }
+            .padding()
+            .frame(maxWidth: .infinity)
         }
-        .padding()
         .onAppear { animateEmpty = true }
+    }
+
+    private func refreshMatches() async {
+        await viewModel.fetchMatches(token: authViewModel.getToken())
+        await viewModel.fetchGroupChats(token: authViewModel.getToken())
     }
 }
 
@@ -552,6 +581,7 @@ struct BlockedMatchRow: View {
 
 struct MeetupGroupChatRow: View {
     let meetup: Meetup
+    var unreadCount: Int = 0
     var onAvatarTap: (() -> Void)? = nil
 
     var body: some View {
@@ -573,12 +603,24 @@ struct MeetupGroupChatRow: View {
                             .foregroundColor(.white.opacity(0.85))
                     }
                 }
+                .overlay(alignment: .topTrailing) {
+                    if unreadCount > 0 {
+                        Text(unreadCount > 9 ? "9+" : "\(unreadCount)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.purple))
+                            .offset(x: 4, y: -4)
+                    }
+                }
             }
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(meetup.title)
                     .font(.headline)
+                    .fontWeight(unreadCount > 0 ? .bold : .semibold)
                     .lineLimit(1)
                 HStack(spacing: 4) {
                     Text("\(meetup.participantCount) players")
@@ -1255,4 +1297,3 @@ struct PartnerProfileSheet: View {
         }
     }
 }
-

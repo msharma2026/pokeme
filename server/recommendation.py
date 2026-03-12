@@ -225,7 +225,7 @@ def _tokenize_text(text):
 def _sport_map(user):
     sports = {}
     for entry in _parse_sports(user.get('sports', [])):
-        if not isinstance(entry, dict):
+        if not hasattr(entry, 'get'):
             continue
         sport_name = _normalized_str(entry.get('sport'))
         if not sport_name:

@@ -12,6 +12,28 @@ struct MeetupCardView: View {
 
     @State private var showCancelConfirm = false
 
+    private func formatMeetupDate(_ isoDate: String) -> String {
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "yyyy-MM-dd"
+        guard let date = input.date(from: isoDate) else { return isoDate }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "en_US_POSIX")
+        output.dateFormat = "EEE, M/d"
+        return output.string(from: date)
+    }
+
+    private func formatMeetupTime(_ hhmm: String) -> String {
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "HH:mm"
+        guard let date = input.date(from: hhmm) else { return hhmm }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "en_US_POSIX")
+        output.dateFormat = "h:mm a"
+        return output.string(from: date)
+    }
+
     private var sportIcon: String {
         switch meetup.sport.lowercased() {
         case "basketball": return "basketball"
@@ -59,9 +81,9 @@ struct MeetupCardView: View {
 
             // Date, Time, Location
             HStack(spacing: 16) {
-                Label(meetup.date, systemImage: "calendar")
+                Label(formatMeetupDate(meetup.date), systemImage: "calendar")
                     .font(.caption)
-                Label(meetup.time, systemImage: "clock")
+                Label(formatMeetupTime(meetup.time), systemImage: "clock")
                     .font(.caption)
             }
             .foregroundColor(.secondary)

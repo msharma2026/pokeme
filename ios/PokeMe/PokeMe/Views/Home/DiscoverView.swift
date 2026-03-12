@@ -3,10 +3,7 @@ import SwiftUI
 struct DiscoverView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = DiscoverViewModel()
-
-    @State private var pullOffset: CGFloat = 0
     @State private var isRefreshing = false
-    private let refreshThreshold: CGFloat = 60
 
     var body: some View {
         NavigationView {
@@ -40,23 +37,28 @@ struct DiscoverView: View {
                     if viewModel.newProfilesAvailable {
                         newPeoplePill
                     }
-
-                    // Refresh indicator slides in from top edge (doesn't affect content layout)
-                    if isRefreshing || pullOffset > 8 {
-                        refreshOverlayView
-                    }
                 }
                 .animation(.spring(response: 0.4), value: viewModel.newProfilesAvailable)
-                .overlay(alignment: .top) {
-                    // Invisible pull-gesture capture zone at the very top
-                    Color.clear
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 24)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(pullGesture)
-                }
             }
             .navigationTitle("Discover")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        isRefreshing = true
+                        Task {
+                            await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
+                            isRefreshing = false
+                        }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView().tint(.orange)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(isRefreshing)
+                }
+            }
             .task {
                 if viewModel.profiles.isEmpty {
                     await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
@@ -79,62 +81,6 @@ struct DiscoverView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Pull-to-Refresh
-
-    private var pullGesture: some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { value in
-                guard !isRefreshing, value.translation.height > 0 else { return }
-                withAnimation(.interactiveSpring()) {
-                    pullOffset = min(value.translation.height * 0.55, refreshThreshold * 1.3)
-                }
-            }
-            .onEnded { _ in
-                if pullOffset >= refreshThreshold {
-                    triggerRefresh()
-                } else {
-                    withAnimation(.spring(response: 0.3)) { pullOffset = 0 }
-                }
-            }
-    }
-
-    private func triggerRefresh() {
-        withAnimation(.spring(response: 0.3)) {
-            isRefreshing = true
-            pullOffset = 0
-        }
-        Task {
-            await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)
-            withAnimation(.spring(response: 0.4)) {
-                isRefreshing = false
-            }
-        }
-    }
-
-    private var refreshOverlayView: some View {
-        HStack(spacing: 8) {
-            if isRefreshing {
-                ProgressView()
-                    .tint(.orange)
-                    .scaleEffect(0.85)
-            } else {
-                Image(systemName: "arrow.down")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(pullOffset >= refreshThreshold ? 180 : 0))
-                    .animation(.spring(response: 0.3), value: pullOffset >= refreshThreshold)
-            }
-            Text(isRefreshing ? "Refreshing…" : pullOffset >= refreshThreshold ? "Release to refresh" : "Pull to refresh")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 36)
-        .background(.ultraThinMaterial)
-        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     // MARK: - New People Pill

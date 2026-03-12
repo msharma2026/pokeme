@@ -15,6 +15,28 @@ struct MeetupDetailView: View {
     private var isHost: Bool { meetup.hostId == currentUserId }
     private var isJoined: Bool { meetup.participants?.contains(currentUserId) ?? false }
 
+    private func formatMeetupDate(_ isoDate: String) -> String {
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "yyyy-MM-dd"
+        guard let date = input.date(from: isoDate) else { return isoDate }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "en_US_POSIX")
+        output.dateFormat = "EEEE, MMMM d, yyyy"
+        return output.string(from: date)
+    }
+
+    private func formatMeetupTime(_ hhmm: String) -> String {
+        let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "HH:mm"
+        guard let date = input.date(from: hhmm) else { return hhmm }
+        let output = DateFormatter()
+        output.locale = Locale(identifier: "en_US_POSIX")
+        output.dateFormat = "h:mm a"
+        return output.string(from: date)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -47,8 +69,8 @@ struct MeetupDetailView: View {
                             .font(.body)
                     }
 
-                    Label(meetup.date, systemImage: "calendar")
-                    Label(meetup.time, systemImage: "clock")
+                    Label(formatMeetupDate(meetup.date), systemImage: "calendar")
+                    Label(formatMeetupTime(meetup.time), systemImage: "clock")
 
                     if let location = meetup.location, !location.isEmpty {
                         Label(location, systemImage: "mappin.and.ellipse")
@@ -233,15 +255,22 @@ struct MeetupDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             guard let token = authViewModel.getToken() else { return }
+            // Use cached participants if still fresh
+            if let cached = MeetupParticipantsCache.shared.participants(for: meetup.id) {
+                participants = cached
+                return
+            }
             isLoadingParticipants = true
             if let response = try? await MeetupService.shared.getParticipants(token: token, meetupId: meetup.id) {
                 participants = response.participants
+                MeetupParticipantsCache.shared.store(response.participants, for: meetup.id)
             }
             isLoadingParticipants = false
         }
         .sheet(item: $selectedParticipant) { participant in
             NavigationView {
                 ParticipantProfileSheet(user: participant)
+                    .environmentObject(authViewModel)
                     .navigationTitle(participant.displayName)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
@@ -262,6 +291,14 @@ struct MeetupDetailView: View {
 
 struct ParticipantProfileSheet: View {
     let user: User
+    @EnvironmentObject var authViewModel: AuthViewModel
+
+    @State private var pokeStatus: ParticipantPokeStatus = .notPoked
+    @State private var existingMatchId: String?
+    @State private var existingMatchPartnerName: String?
+    @State private var showChat = false
+
+    private enum ParticipantPokeStatus { case notPoked, loading, poked, matched }
 
     var body: some View {
         ScrollView {
@@ -335,9 +372,107 @@ struct ParticipantProfileSheet: View {
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+
+                    // Action button — hidden for own profile
+                    if user.id != (authViewModel.user?.id ?? "") {
+                        if pokeStatus == .matched {
+                            Button { showChat = true } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "message.fill")
+                                        .font(.system(size: 18, weight: .bold))
+                                    Text("Message")
+                                        .font(.headline.bold())
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(
+                                    LinearGradient(colors: [.purple, .indigo], startPoint: .leading, endPoint: .trailing)
+                                )
+                                .foregroundColor(.white)
+                                .cornerRadius(20)
+                                .shadow(color: Color.purple.opacity(0.3), radius: 8, x: 0, y: 4)
+                            }
+                            .padding(.top, 8)
+                        } else {
+                            Button {
+                                guard pokeStatus == .notPoked else { return }
+                                Task { await pokeParticipant() }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    if pokeStatus == .loading {
+                                        ProgressView().tint(.white)
+                                    } else {
+                                        Image(systemName: pokeStatus == .notPoked ? "hand.point.right.fill" : "checkmark")
+                                            .font(.system(size: 18, weight: .bold))
+                                    }
+                                    Text(pokeStatus == .poked ? "Poked" : "Poke")
+                                        .font(.headline.bold())
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(
+                                    pokeStatus == .notPoked || pokeStatus == .loading
+                                        ? LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                                        : LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
+                                )
+                                .foregroundColor(.white)
+                                .cornerRadius(20)
+                                .shadow(color: (pokeStatus == .poked ? Color.green : Color.orange).opacity(0.3),
+                                        radius: 8, x: 0, y: 4)
+                            }
+                            .disabled(pokeStatus == .poked || pokeStatus == .loading)
+                            .padding(.top, 8)
+                        }
+                    }
                 }
                 .padding(20)
             }
+        }
+        .task { await checkRelationshipStatus() }
+        .sheet(isPresented: $showChat) {
+            if let matchId = existingMatchId, let partnerName = existingMatchPartnerName {
+                ChatView(matchId: matchId, partnerName: partnerName)
+                    .environmentObject(authViewModel)
+            }
+        }
+    }
+
+    @MainActor
+    private func checkRelationshipStatus() async {
+        let currentUserId = authViewModel.user?.id ?? ""
+        guard user.id != currentUserId else { return }
+
+        // Fast path: use in-memory cache populated by MatchViewModel (runs every 5s)
+        if let matchInfo = RelationshipStatusCache.shared.matchInfo(for: user.id) {
+            existingMatchId = matchInfo.matchId
+            existingMatchPartnerName = matchInfo.partnerName
+            pokeStatus = .matched
+            return
+        }
+        if RelationshipStatusCache.shared.isPoked(user.id) {
+            pokeStatus = .poked
+        }
+    }
+
+    @MainActor
+    private func pokeParticipant() async {
+        guard let token = authViewModel.getToken() else { return }
+        pokeStatus = .loading
+        do {
+            let response = try await MatchService.shared.poke(token: token, userId: user.id)
+            if response.status == "matched" {
+                existingMatchId = response.match?.id
+                existingMatchPartnerName = response.match?.partnerName ?? user.displayName
+                pokeStatus = .matched
+                if let m = response.match {
+                    RelationshipStatusCache.shared.populateMatches([m])
+                }
+            } else {
+                pokeStatus = .poked
+                RelationshipStatusCache.shared.markPoked(user.id)
+            }
+        } catch {
+            pokeStatus = .notPoked
         }
     }
 

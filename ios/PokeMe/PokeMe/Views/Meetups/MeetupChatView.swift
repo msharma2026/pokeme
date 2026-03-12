@@ -95,6 +95,7 @@ struct MeetupChatView: View {
                 }
             }
             .onAppear {
+                markGroupChatRead()
                 viewModel.configure(
                     meetupId: meetupId,
                     currentUserId: authViewModel.user?.id ?? ""
@@ -106,8 +107,15 @@ struct MeetupChatView: View {
             }
             .onDisappear {
                 viewModel.stopPolling()
+                markGroupChatRead()
             }
         }
+    }
+
+    private func markGroupChatRead() {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        UserDefaults.standard.set(iso.string(from: Date()), forKey: "groupChatLastOpened_\(meetupId)")
     }
 
     private func sendMessage() {

@@ -34,6 +34,7 @@ struct PokeResponse: Codable {
 
 struct DiscoverResponse: Codable {
     let profiles: [User]
+    let pokedIds: [String]?
 }
 
 struct IncomingPoke: Codable, Identifiable {
