@@ -176,6 +176,28 @@ class MatchViewModel: ObservableObject {
         saveBlockedMatches()
     }
 
+    func prefetchAllMessages(token: String?, currentUserId: String?) async {
+        guard let token = token, let currentUserId = currentUserId else { return }
+        await withTaskGroup(of: Void.self) { group in
+            for match in matches {
+                let matchId = match.id
+                group.addTask {
+                    // Skip if already cached
+                    guard MessageCache.shared.getMessages(for: matchId) == nil else { return }
+                    do {
+                        let response = try await MessageService.shared.getMessages(token: token, matchId: matchId, since: nil)
+                        var msgs = response.messages
+                        for i in 0..<msgs.count {
+                            msgs[i].isFromCurrentUser = msgs[i].senderId == currentUserId
+                        }
+                        let timestamp = msgs.compactMap { $0.createdAt }.max()
+                        MessageCache.shared.update(matchId: matchId, messages: msgs, timestamp: timestamp)
+                    } catch {}
+                }
+            }
+        }
+    }
+
     func startPolling(token: String?) {
         stopPolling()
         let matchTimer = Timer(timeInterval: 5.0, repeats: true) { [weak self] _ in

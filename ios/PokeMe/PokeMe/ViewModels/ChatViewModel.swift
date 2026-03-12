@@ -26,6 +26,16 @@ class ChatViewModel: ObservableObject {
     func configure(currentUserId: String, matchId: String) {
         self.currentUserId = currentUserId
         self.matchId = matchId
+
+        // Pre-populate from cache so the view renders instantly on re-open
+        if let cached = MessageCache.shared.getMessages(for: matchId), !cached.isEmpty {
+            var all = cached
+            for i in 0..<all.count {
+                all[i].isFromCurrentUser = all[i].senderId == currentUserId
+            }
+            messages = all
+            latestMessageTimestamp = MessageCache.shared.getTimestamp(for: matchId)
+        }
     }
 
     func fetchMessages(token: String?) async {
@@ -62,6 +72,9 @@ class ChatViewModel: ObservableObject {
             // Track the latest timestamp for the next poll
             latestMessageTimestamp = messages.compactMap { $0.createdAt }.max() ?? latestMessageTimestamp
 
+            // Persist to cache so re-opening this chat shows messages instantly
+            MessageCache.shared.update(matchId: matchId, messages: messages, timestamp: latestMessageTimestamp)
+
             await markUnreadMessagesAsRead(token: token)
 
             // Refresh active session alongside every message fetch (uses existing sessions list endpoint)
@@ -81,7 +94,7 @@ class ChatViewModel: ObservableObject {
     }
 
     func sendMessage(token: String?, text: String) async -> Bool {
-        guard let token = token, let matchId = matchId else {
+        guard let token = token, let matchId = matchId, let currentUserId = currentUserId else {
             errorMessage = "Not authenticated"
             return false
         }
@@ -89,22 +102,45 @@ class ChatViewModel: ObservableObject {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return false }
 
+        // Optimistically show the message immediately
+        let tempId = "temp-\(UUID().uuidString)"
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var tempMessage = Message(
+            id: tempId,
+            matchId: matchId,
+            senderId: currentUserId,
+            text: trimmedText,
+            createdAt: formatter.string(from: Date()),
+            readBy: nil,
+            reactions: nil,
+            type: nil,
+            metadata: nil
+        )
+        tempMessage.isFromCurrentUser = true
+        messages.append(tempMessage)
+
         isSending = true
 
         do {
             let response = try await MessageService.shared.sendMessage(token: token, matchId: matchId, text: trimmedText)
-            var newMessage = response.message
-            newMessage.isFromCurrentUser = true
-            messages.append(newMessage)
+            var confirmed = response.message
+            confirmed.isFromCurrentUser = true
+            // Swap temp with the confirmed server message
+            if let idx = messages.firstIndex(where: { $0.id == tempId }) {
+                messages[idx] = confirmed
+            }
             isSending = false
 
             await stopTyping(token: token)
             return true
         } catch let error as NetworkError {
+            messages.removeAll { $0.id == tempId }
             errorMessage = error.errorDescription
             isSending = false
             return false
         } catch {
+            messages.removeAll { $0.id == tempId }
             errorMessage = error.localizedDescription
             isSending = false
             return false
@@ -113,7 +149,7 @@ class ChatViewModel: ObservableObject {
 
     func startPolling(token: String?) {
         stopPolling()
-        let timer = Timer(timeInterval: 3.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.5, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 await self?.fetchMessages(token: token)
             }

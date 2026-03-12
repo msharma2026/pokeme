@@ -100,6 +100,7 @@ struct HomeView: View {
             await matchViewModel.fetchMatches(token: authViewModel.getToken())
             await matchViewModel.fetchGroupChats(token: authViewModel.getToken())
             await meetupViewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
+            await matchViewModel.prefetchAllMessages(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
         }
         .onAppear {
             matchViewModel.startPolling(token: authViewModel.getToken())

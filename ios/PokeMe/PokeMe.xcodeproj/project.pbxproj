@@ -30,6 +30,7 @@
 		A0ABD37782000374CC10F595 /* MatchCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5044193EB50C1D1CA5112F5 /* MatchCardView.swift */; };
 		A1A1A1A1A1A1A1A1A1A1A1A1 /* AvailabilityHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11AA11AA11AA11AA11AA11 /* AvailabilityHelper.swift */; };
 		A5D375809BFC687CE6924B36 /* MessageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FAB7FEA277127034E8942AB /* MessageService.swift */; };
+		MC01MC01MC01MC01MC01MC01 /* MessageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = MC00MC00MC00MC00MC00MC00 /* MessageCache.swift */; };
 		A7A7A7A7A7A7A7A7A7A7A7A7 /* ProposalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A771A771A771A771A771A77 /* ProposalSheet.swift */; };
 		AA1234560000000000000002 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1234560000000000000001 /* OnboardingView.swift */; };
 		ADE24390A25C244FBA4C819A /* MatchesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52ED4ECFB0A2BEBD9C8188FC /* MatchesListView.swift */; };
@@ -94,6 +95,7 @@
 		47D85C29E1B036F4A792CD80 /* MeetupChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupChatViewModel.swift; sourceTree = "<group>"; };
 		4DAA4DAA4DAA4DAA4DAA4DAA /* MeetupCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetupCardView.swift; sourceTree = "<group>"; };
 		4FAB7FEA277127034E8942AB /* MessageService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MessageService.swift; sourceTree = "<group>"; };
+		MC00MC00MC00MC00MC00MC00 /* MessageCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MessageCache.swift; sourceTree = "<group>"; };
 		52ED4ECFB0A2BEBD9C8188FC /* MatchesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MatchesListView.swift; path = PokeMe/Views/Home/MatchesListView.swift; sourceTree = SOURCE_ROOT; };
 		53E0B99F8F6A39A7EBB6B58D /* PhoneLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneLoginView.swift; sourceTree = "<group>"; };
 		577CE611175CC7D7E7C453C6 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 				AA11AA11AA11AA11AA11AA11 /* AvailabilityHelper.swift */,
 				A1E2C3D4B5F60718293A4B5C /* NotificationManager.swift */,
 				AB12AB12AB12AB12AB12AB12 /* Theme.swift */,
+				MC00MC00MC00MC00MC00MC00 /* MessageCache.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -454,6 +457,7 @@
 				7D3F29CF7288551943221D26 /* EditProfileView.swift in Sources */,
 				63FA2DB056534A47E7F1A729 /* Message.swift in Sources */,
 				A5D375809BFC687CE6924B36 /* MessageService.swift in Sources */,
+				MC01MC01MC01MC01MC01MC01 /* MessageCache.swift in Sources */,
 				830BCC470F8C480FB6A47D07 /* ChatViewModel.swift in Sources */,
 				FCACCB55FDDE104290742AAF /* ChatView.swift in Sources */,
 				51084EF88904F4B46E7BA786 /* DiscoverViewModel.swift in Sources */,

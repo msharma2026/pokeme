@@ -531,7 +531,11 @@ struct MessageBubble: View {
                         .foregroundColor(.secondary)
 
                     if message.isFromCurrentUser {
-                        if message.isReadByPartner(currentUserId: currentUserId) {
+                        if message.id.hasPrefix("temp-") {
+                            Text("Sending...")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.gray)
+                        } else if message.isReadByPartner(currentUserId: currentUserId) {
                             Text("Read")
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundStyle(
