@@ -298,11 +298,20 @@ class DiscoverViewModel: ObservableObject {
     func pokeProfile(token: String?, user: User) async {
         guard let token = token else { return }
 
+        // Optimistic update — disable button and move card immediately so the UI
+        // feels instant. We roll back on error.
+        pokedIds.insert(user.id)
+        RelationshipStatusCache.shared.markPoked(user.id)
+        withAnimation(.easeInOut(duration: 0.35)) {
+            if let idx = profiles.firstIndex(where: { $0.id == user.id }) {
+                let poked = profiles.remove(at: idx)
+                profiles.append(poked)
+            }
+        }
+
         do {
             let response = try await MatchService.shared.poke(token: token, userId: user.id)
-            pokedIds.insert(user.id)
             savePokedIds()
-            RelationshipStatusCache.shared.markPoked(user.id)
 
             if response.status == "matched" {
                 matchedUser = user
@@ -320,18 +329,12 @@ class DiscoverViewModel: ObservableObject {
                     try? await UNUserNotificationCenter.current().add(request)
                 }
             }
-
-            // Move poked card to bottom after a brief pause so the "Poked!" state is visible
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            withAnimation(.easeInOut(duration: 0.35)) {
-                if let idx = profiles.firstIndex(where: { $0.id == user.id }) {
-                    let poked = profiles.remove(at: idx)
-                    profiles.append(poked)
-                }
-            }
         } catch let error as NetworkError {
+            // Roll back optimistic update
+            pokedIds.remove(user.id)
             errorMessage = error.errorDescription
         } catch {
+            pokedIds.remove(user.id)
             errorMessage = error.localizedDescription
         }
     }
