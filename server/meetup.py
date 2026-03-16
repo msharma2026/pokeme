@@ -5,7 +5,7 @@ import uuid
 from db import get_client, Entity
 from models import meetup_to_dict, user_to_dict
 from middleware import require_auth
-from auth import get_user_by_id
+from auth import get_user_by_id, get_display_name_for_request
 
 meetup_bp = Blueprint('meetup', __name__)
 
@@ -108,15 +108,16 @@ def my_meetups():
     user_id = request.user_id
     client = get_client()
 
+    # The host is always added to the participants list on creation, so a
+    # single filter on participants covers both hosted and joined meetups.
     query = client.query(kind='Meetup')
+    query.add_filter('participants', '=', user_id)
 
     meetups = []
     for entity in query.fetch():
         if entity.get('status') == 'cancelled':
             continue
-        participants = entity.get('participants', [])
-        if user_id in participants or entity.get('hostId') == user_id:
-            meetups.append(meetup_to_dict(entity))
+        meetups.append(meetup_to_dict(entity))
 
     meetups.sort(key=lambda m: m.get('date', '') + m.get('time', ''))
 
@@ -228,10 +229,11 @@ def get_meetup_participants(meetup_id):
 
     participant_ids = meetup.get('participants', [])
     participants = []
-    for pid in participant_ids:
-        user = get_user_by_id(pid)
-        if user:
-            participants.append(user_to_dict(user))
+    if participant_ids:
+        keys = [client.key('User', pid) for pid in participant_ids]
+        for user in client.get_multi(keys):
+            if user:
+                participants.append(user_to_dict(user))
 
     return jsonify({
         'success': True,
@@ -258,6 +260,8 @@ def get_meetup_messages(meetup_id):
     query = client.query(kind='MeetupMessage')
     query.add_filter('meetupId', '=', meetup_id)
 
+    query.order = ['createdAt']
+
     messages = []
     for entity in query.fetch():
         messages.append({
@@ -268,8 +272,6 @@ def get_meetup_messages(meetup_id):
             'text': entity.get('text'),
             'createdAt': entity.get('createdAt'),
         })
-
-    messages.sort(key=lambda m: m.get('createdAt', ''))
 
     return jsonify({
         'success': True,
@@ -298,8 +300,7 @@ def send_meetup_message(meetup_id):
     if not text:
         return error_response('VALIDATION_ERROR', 'text is required')
 
-    user = get_user_by_id(user_id)
-    sender_name = user.get('displayName', 'Unknown') if user else 'Unknown'
+    sender_name = get_display_name_for_request(user_id)
 
     message_id = str(uuid.uuid4())
     created_at = datetime.utcnow().isoformat() + 'Z'

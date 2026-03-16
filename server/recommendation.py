@@ -1,12 +1,34 @@
 import json
 import logging
 import re
+import time
 
 import anthropic
 
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Module-level Anthropic client (avoids reconstructing on every call)
+# ---------------------------------------------------------------------------
+_anthropic_client: anthropic.Anthropic | None = None
+
+
+def _get_client() -> anthropic.Anthropic:
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+    return _anthropic_client
+
+
+# ---------------------------------------------------------------------------
+# Per-viewer result cache  (5-minute TTL — background polls every 30s, so
+# this reduces Claude calls by ~90% without meaningfully staling results)
+# ---------------------------------------------------------------------------
+_discover_cache: dict = {}  # viewer_id -> (timestamp, ranked_list)
+_CACHE_TTL = 300  # seconds
+
 
 # ---------------------------------------------------------------------------
 # Claude AI recommendation
@@ -26,7 +48,7 @@ def _parse_sports(raw):
     return []
 
 
-def _profile_summary(user):
+def _profile_summary(user, include_name: bool = True) -> dict:
     """Extract relevant profile fields for the AI prompt (no pictures)."""
     sports = _parse_sports(user.get('sports', []))
     sports_str = ', '.join(
@@ -38,61 +60,75 @@ def _profile_summary(user):
     avail_parts = []
     for day, slots in availability.items():
         if isinstance(slots, list) and slots:
-            avail_parts.append(f"{day}: {', '.join(slots)}")
-    avail_str = '; '.join(avail_parts) or 'Not set'
+            avail_parts.append(f"{day}:{','.join(slots)}")
+    avail_str = ';'.join(avail_parts) or 'Not set'
 
-    return {
-        'displayName': user.get('displayName', 'Unknown'),
+    # Bio is capped at 150 chars — the front of a bio carries the most
+    # signal; longer text only adds tokens without improving scores.
+    bio = (user.get('bio') or '')[:150]
+
+    summary: dict = {
         'collegeYear': user.get('collegeYear') or 'Not set',
         'major': user.get('major') or 'Not set',
-        'bio': user.get('bio') or '',
+        'bio': bio,
         'sports': sports_str,
         'availability': avail_str,
     }
+    if include_name:
+        summary['displayName'] = user.get('displayName', 'Unknown')
+    return summary
 
 
-def _build_prompt(viewer_summary, candidate_summaries):
+def _build_prompt(viewer_summary: dict, candidate_summaries: list) -> str:
     """Build the Claude prompt for ranking candidates."""
-    candidates_json = json.dumps(candidate_summaries, indent=2)
-    viewer_json = json.dumps(viewer_summary, indent=2)
+    # Compact JSON (no indent) — removes ~30% of input tokens vs indent=2.
+    # Candidates omit displayName; they are identified by their "index" field.
+    candidates_json = json.dumps(candidate_summaries)
+    viewer_json = json.dumps(viewer_summary)
 
-    return f"""You are a matchmaking AI for a college sports app called PokeMe. Your job is to score how compatible each candidate is with the viewer for playing sports together.
+    return f"""You are a matchmaking AI for a college sports app. Score compatibility between the viewer and each candidate for playing sports together.
 
-VIEWER PROFILE:
-{viewer_json}
+VIEWER: {viewer_json}
 
-CANDIDATE PROFILES:
-{candidates_json}
+CANDIDATES: {candidates_json}
 
-For each candidate, evaluate compatibility based on:
-- Sports overlap and skill level alignment (most important ~55%)
-- Availability overlap - can they actually meet up? (~20%)
+Score each candidate on:
+- Sports overlap & skill alignment (~55%)
+- Availability overlap (~20%)
 - College year proximity (~10%)
-- Shared interests from major/bio (~15%)
+- Major/bio similarity (~15%)
 
-Return a JSON array (no markdown, no explanation) where each element has:
-- "id": the candidate's index (0-based)
-- "score": integer 0-100 (overall compatibility)
-- "reasons": array of 1-3 short human-readable reasons (e.g. "Both play volleyball at similar levels", "Free on Saturday afternoons")
-- "breakdown": object with "sports", "availability", "collegeYear", "majorBio" each 0-100
+Return a JSON array ONLY (no markdown). Each element: {{"id":<index>,"score":<0-100>,"breakdown":{{"sports":<0-100>,"availability":<0-100>,"collegeYear":<0-100>,"majorBio":<0-100>}}}}"""
 
-Example response format:
-[{{"id": 0, "score": 82, "reasons": ["Both play tennis at intermediate level", "Overlapping Saturday availability"], "breakdown": {{"sports": 90, "availability": 75, "collegeYear": 80, "majorBio": 60}}}}]
 
-Return ONLY the JSON array, nothing else."""
+def _generate_reasons(breakdown: dict, shared_sports: list | None = None) -> list[str]:
+    """Generate human-readable reasons from a score breakdown dict."""
+    reasons = []
+    if shared_sports:
+        reasons.append(f"Shared sports: {', '.join(shared_sports[:3])}")
+    elif breakdown.get('sports', 0) >= 60:
+        reasons.append('Compatible sports and skill levels')
+    if breakdown.get('availability', 0) >= 40:
+        reasons.append('Overlapping availability windows')
+    if breakdown.get('collegeYear', 0) >= 65:
+        reasons.append('Similar college year')
+    if breakdown.get('majorBio', 0) >= 60:
+        reasons.append('Similar academic background or interests')
+    if not reasons:
+        reasons.append('Recommended from overall profile compatibility')
+    return reasons
 
 
 def _call_claude(viewer, candidates):
     """Call Claude API to rank candidates. Returns list of recommendations or None on failure."""
-    api_key = Config.ANTHROPIC_API_KEY
-    if not api_key:
+    if not Config.ANTHROPIC_API_KEY:
         logger.warning('ANTHROPIC_API_KEY not set, falling back to heuristic')
         return None
 
-    viewer_summary = _profile_summary(viewer)
+    viewer_summary = _profile_summary(viewer, include_name=True)
     candidate_summaries = []
     for i, c in enumerate(candidates):
-        summary = _profile_summary(c)
+        summary = _profile_summary(c, include_name=False)
         summary['index'] = i
         candidate_summaries.append(summary)
 
@@ -102,10 +138,9 @@ def _call_claude(viewer, candidates):
     prompt = _build_prompt(viewer_summary, candidate_summaries)
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
+        response = _get_client().messages.create(
             model='claude-haiku-4-5-20251001',
-            max_tokens=2048,
+            max_tokens=4096,
             messages=[{'role': 'user', 'content': prompt}],
         )
 
@@ -133,6 +168,17 @@ def rank_discover_candidates(viewer, candidates):
     if not candidates:
         return []
 
+    viewer_id = viewer.key.name or str(viewer.key.id)
+
+    # Return cached results if still fresh — background polls run every 30s
+    # so this cuts Claude calls by ~90% while keeping results current.
+    cached = _discover_cache.get(viewer_id)
+    if cached:
+        ts, result = cached
+        if time.time() - ts < _CACHE_TTL:
+            logger.info(f'Returning cached discover results for viewer {viewer_id}')
+            return result
+
     ai_results = _call_claude(viewer, candidates)
 
     if ai_results is not None:
@@ -150,13 +196,14 @@ def rank_discover_candidates(viewer, candidates):
                 candidate_id = candidate.key.name or str(candidate.key.id)
                 if i in ai_by_index:
                     ai = ai_by_index[i]
+                    breakdown = ai.get('breakdown', {
+                        'sports': 50, 'availability': 50,
+                        'collegeYear': 50, 'majorBio': 50,
+                    })
                     recommendation = {
                         'score': max(0, min(100, ai.get('score', 50))),
-                        'reasons': ai.get('reasons', ['AI-recommended match']),
-                        'breakdown': ai.get('breakdown', {
-                            'sports': 50, 'availability': 50,
-                            'collegeYear': 50, 'majorBio': 50,
-                        }),
+                        'reasons': _generate_reasons(breakdown),
+                        'breakdown': breakdown,
                         'rankedBy': 'claude',
                     }
                 else:
@@ -174,11 +221,15 @@ def rank_discover_candidates(viewer, candidates):
                 item['candidate'].get('displayName', '').strip().lower(),
                 item['candidateId'],
             ))
+
+            _discover_cache[viewer_id] = (time.time(), ranked)
             return ranked
 
     # Fallback to heuristic
     logger.warning('Claude AI unavailable or returned no results, using heuristic fallback')
-    return _rank_heuristic(viewer, candidates)
+    result = _rank_heuristic(viewer, candidates)
+    _discover_cache[viewer_id] = (time.time(), result)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -313,27 +364,17 @@ def _heuristic_score(viewer, candidate):
         + major_bio_score * COMPONENT_WEIGHTS['majorBio']
     )
 
-    reasons = []
-    if shared_sports:
-        reasons.append(f"Shared sports: {', '.join(sorted(shared_sports)[:3])}")
-    if _availability_slots(viewer) & _availability_slots(candidate):
-        reasons.append('Overlapping availability windows')
-    if year_score >= 0.65:
-        reasons.append('Similar college year')
-    if major_match:
-        reasons.append('Same major')
-    if not reasons:
-        reasons.append('Recommended from overall profile compatibility')
+    breakdown = {
+        'sports': round(sports_score * 100, 2),
+        'availability': round(avail_score * 100, 2),
+        'collegeYear': round(year_score * 100, 2),
+        'majorBio': round(major_bio_score * 100, 2),
+    }
 
     return {
         'score': round(total * 100, 2),
-        'reasons': reasons,
-        'breakdown': {
-            'sports': round(sports_score * 100, 2),
-            'availability': round(avail_score * 100, 2),
-            'collegeYear': round(year_score * 100, 2),
-            'majorBio': round(major_bio_score * 100, 2),
-        },
+        'reasons': _generate_reasons(breakdown, shared_sports=sorted(shared_sports)[:3] if shared_sports else None),
+        'breakdown': breakdown,
     }
 
 

@@ -24,6 +24,9 @@ def require_auth(f):
         try:
             payload = jwt.decode(token, Config.JWT_SECRET, algorithms=['HS256'])
             request.user_id = payload['userId']
+            # Present in tokens issued after the displayName-in-JWT change.
+            # None for older tokens — callers fall back to a DB read.
+            request.user_display_name = payload.get('displayName')
         except jwt.ExpiredSignatureError:
             return jsonify({
                 'success': False,

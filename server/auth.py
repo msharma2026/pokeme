@@ -55,14 +55,33 @@ def get_user_by_id(user_id):
     return client.get(key)
 
 
-def generate_token(user_id):
-    """Generate a JWT token."""
+def generate_token(user_id, display_name=None):
+    """Generate a JWT token, optionally embedding displayName to avoid
+    per-request DB lookups in session/message endpoints."""
     payload = {
         'userId': user_id,
         'exp': datetime.utcnow() + timedelta(days=Config.JWT_EXPIRATION_DAYS),
         'iat': datetime.utcnow()
     }
+    if display_name:
+        payload['displayName'] = display_name
     return jwt.encode(payload, Config.JWT_SECRET, algorithm='HS256')
+
+
+def get_display_name_for_request(user_id):
+    """Return the display name for the current authenticated user.
+
+    Fast path: reads from the JWT claim embedded since the displayName-in-JWT
+    change — zero Datastore reads.
+    Slow path: falls back to a Datastore lookup for older tokens that pre-date
+    this change, then the result is still just one direct key read.
+    """
+    from flask import request as _req
+    name = getattr(_req, 'user_display_name', None)
+    if name:
+        return name
+    user = get_user_by_id(user_id)
+    return user.get('displayName', 'Someone') if user else 'Someone'
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -100,8 +119,8 @@ def register():
     user = create_user(email, password, display_name, major)
     user_id = user.key.name or str(user.key.id)
 
-    # Generate token
-    token = generate_token(user_id)
+    # Generate token (embed displayName so session endpoints skip DB lookup)
+    token = generate_token(user_id, display_name)
 
     return jsonify({
         'success': True,
@@ -150,9 +169,9 @@ def login():
             }
         }), 401
 
-    # Generate token
+    # Generate token (embed displayName so session endpoints skip DB lookup)
     user_id = user.key.name or str(user.key.id)
-    token = generate_token(user_id)
+    token = generate_token(user_id, user.get('displayName'))
 
     return jsonify({
         'success': True,
@@ -235,31 +254,35 @@ def delete_account():
     user_id = request.user_id
     client = get_client()
 
-    # Delete pokes
+    # Collect all keys to delete, then issue a single batch delete.
+    keys_to_delete = []
+
+    # Pokes (outgoing and incoming)
     for field in ['fromUserId', 'toUserId']:
         q = client.query(kind='Poke')
         q.add_filter(field, '=', user_id)
-        for entity in q.fetch():
-            client.delete(entity.key)
+        q.keys_only()
+        keys_to_delete.extend(item.key for item in q.fetch())
 
-    # Delete matches and their messages/reactions/sessions
+    # Matches and all their child entities
     for field in ['user1Id', 'user2Id']:
         q = client.query(kind='Match')
         q.add_filter(field, '=', user_id)
         for match in q.fetch():
             match_id = match.key.name or str(match.key.id)
-
+            keys_to_delete.append(match.key)
             for kind in ['Message', 'MessageReaction', 'Session']:
                 mq = client.query(kind=kind)
                 mq.add_filter('matchId', '=', match_id)
-                for entity in mq.fetch():
-                    client.delete(entity.key)
+                mq.keys_only()
+                keys_to_delete.extend(item.key for item in mq.fetch())
 
-            client.delete(match.key)
+    keys_to_delete.append(client.key('User', user_id))
 
-    # Delete the user entity
-    user_key = client.key('User', user_id)
-    client.delete(user_key)
+    # Datastore delete_multi accepts up to 500 keys per call
+    chunk_size = 500
+    for i in range(0, len(keys_to_delete), chunk_size):
+        client.delete_multi(keys_to_delete[i:i + chunk_size])
 
     return jsonify({'success': True, 'data': {}})
 

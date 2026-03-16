@@ -1,9 +1,42 @@
 indexes:
+
+# DM messages — ascending (get_messages with since filter)
 - kind: Message
   properties:
   - name: matchId
   - name: createdAt
 
+# DM messages — descending (get_matches slow-path: fetch only latest message)
+- kind: Message
+  properties:
+  - name: matchId
+  - name: createdAt
+    direction: desc
+
+# Meetup group chat messages — ordered fetch
+- kind: MeetupMessage
+  properties:
+  - name: meetupId
+  - name: createdAt
+
+# Session supersession queries (create_session + update_session cleanup)
+- kind: Session
+  properties:
+  - name: matchId
+  - name: status
+
+# Upcoming sessions for a user
+- kind: Session
+  properties:
+  - name: proposerId
+  - name: status
+
+- kind: Session
+  properties:
+  - name: responderId
+  - name: status
+
+# Legacy — kept for safety; not actively used
 - kind: Match
   properties:
   - name: date

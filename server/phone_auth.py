@@ -249,7 +249,7 @@ def verify_code():
             # Success - get or create user
             user = get_or_create_user_by_phone(phone)
             user_id = user.key.name or str(user.key.id)
-            token = generate_token(user_id)
+            token = generate_token(user_id, user.get('displayName'))
 
             return jsonify({
                 'success': True,

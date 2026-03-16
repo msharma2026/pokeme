@@ -7,7 +7,7 @@ from db import get_client, Entity
 from config import Config
 from models import user_to_dict, expand_availability, session_to_dict
 from middleware import require_auth
-from auth import get_user_by_id
+from auth import get_user_by_id, get_display_name_for_request
 from recommendation import rank_discover_candidates
 
 match_bp = Blueprint('match', __name__)
@@ -74,26 +74,30 @@ def discover():
 
     exclude_ids = poked_ids | matched_ids | {user_id}
 
-    # Fetch all users and filter
-    all_users = list(client.query(kind='User').fetch())
+    # Keys-only scan — fetches only entity keys (no field data), which is
+    # much cheaper than loading every User entity when filtering.
+    key_query = client.query(kind='User')
+    key_query.keys_only()
+    candidate_keys = [
+        item.key for item in key_query.fetch()
+        if (item.key.name or str(item.key.id)) not in exclude_ids
+    ]
+
+    # Batch-fetch only the non-excluded user profiles (at most 60 to leave
+    # room for sport filtering while keeping Claude input ≤ 20 candidates).
+    candidate_entities_raw = [e for e in client.get_multi(candidate_keys[:60]) if e]
 
     candidate_entities = []
-    for u in all_users:
-        uid = u.key.name or str(u.key.id)
-        if uid in exclude_ids:
-            continue
-
-        # If sport filter is set, only include users who play that sport
+    for u in candidate_entities_raw:
         if sport_filter:
-            user_sports = u.get('sports', [])
-            sport_names = [s.get('sport', '').lower() for s in user_sports]
+            sport_names = [s.get('sport', '').lower() for s in (u.get('sports') or [])]
             if sport_filter.lower() not in sport_names:
                 continue
-
         candidate_entities.append(u)
 
     # Cap candidates before ranking to limit Datastore reads and Claude API cost
-    ranked_candidates = rank_discover_candidates(user, candidate_entities[:50])
+    # 20 is enough since we only display 20; keeps Claude output well within 4096 tokens
+    ranked_candidates = rank_discover_candidates(user, candidate_entities[:20])
 
     profiles = []
     for ranked in ranked_candidates[:20]:
@@ -121,15 +125,24 @@ def poke(target_user_id):
     if user_id == target_user_id:
         return error_response('POKE_FAILED', 'Cannot poke yourself')
 
-    target = get_user_by_id(target_user_id)
+    client = get_client()
+
+    # Fetch target user + both poke directions in one round-trip.
+    # get_multi only returns found entities, so we key the results by
+    # flat_path and look each one up — missing keys resolve to None.
+    target_key = client.key('User', target_user_id)
+    poke_key = client.key('Poke', f'{user_id}_{target_user_id}')
+    reverse_key = client.key('Poke', f'{target_user_id}_{user_id}')
+    result_map = {e.key.flat_path: e for e in client.get_multi([target_key, poke_key, reverse_key])}
+    target = result_map.get(target_key.flat_path)
+    existing_poke = result_map.get(poke_key.flat_path)
+    reverse_poke = result_map.get(reverse_key.flat_path)
+
     if not target:
         return error_response('USER_NOT_FOUND', 'User not found', 404)
 
-    client = get_client()
-
     # Check if already poked
-    poke_key = client.key('Poke', f'{user_id}_{target_user_id}')
-    if client.get(poke_key):
+    if existing_poke:
         return jsonify({
             'success': True,
             'data': {'status': 'already_poked', 'message': 'You already poked this user'}
@@ -144,9 +157,8 @@ def poke(target_user_id):
     })
     client.put(poke_entity)
 
-    # Check for mutual poke
-    reverse_key = client.key('Poke', f'{target_user_id}_{user_id}')
-    if client.get(reverse_key):
+    # Check for mutual poke (reverse_poke already fetched above)
+    if reverse_poke:
         # Mutual poke — create match
         match_id = str(uuid.uuid4())
         match_entity = Entity(client.key('Match', match_id))
@@ -337,61 +349,81 @@ def get_matches():
     user_id = request.user_id
     client = get_client()
 
-    matches = []
-
+    # --- Pass 1: collect all match entities (2 queries, no per-match reads) ---
+    raw_matches = []  # list of (match_entity, partner_id)
     for field in ['user1Id', 'user2Id']:
         q = client.query(kind='Match')
         q.add_filter(field, '=', user_id)
         q.add_filter('status', '=', 'active')
-
         for m in q.fetch():
             partner_id = m.get('user2Id') if field == 'user1Id' else m.get('user1Id')
-            partner = get_user_by_id(partner_id)
-            pd = user_to_dict(partner, include_picture=False) if partner else {}
+            raw_matches.append((m, partner_id))
 
-            match_id = m.key.name or str(m.key.id)
+    # --- Pass 2: batch-fetch all partner profiles in one round-trip ---
+    partner_ids = [pid for _, pid in raw_matches]
+    partner_keys = [client.key('User', pid) for pid in partner_ids]
+    partner_entities = client.get_multi(partner_keys) if partner_keys else []
+    partners_by_id = {
+        (u.key.name or str(u.key.id)): u
+        for u in partner_entities if u
+    }
 
-            # Fast path: read lastMessage cached on the Match entity
-            last_message = None
-            if m.get('lastMessageCreatedAt'):
+    # --- Pass 3: build response, handling uncached last-message inline ---
+    matches = []
+    uncached_to_save = []  # match entities whose lastMessage cache needs backfilling
+
+    for m, partner_id in raw_matches:
+        match_id = m.key.name or str(m.key.id)
+        partner = partners_by_id.get(partner_id)
+        pd = user_to_dict(partner, include_picture=False) if partner else {}
+
+        # Fast path: lastMessage is cached directly on the Match entity
+        last_message = None
+        if m.get('lastMessageCreatedAt'):
+            last_message = {
+                'text': m.get('lastMessageText'),
+                'senderId': m.get('lastMessageSenderId'),
+                'createdAt': m.get('lastMessageCreatedAt')
+            }
+        else:
+            # Slow path: fetch only the single most-recent message using
+            # the (matchId, createdAt DESC) composite index — no Python sort.
+            msg_query = client.query(kind='Message')
+            msg_query.add_filter('matchId', '=', match_id)
+            msg_query.order = ['-createdAt']
+            msgs = list(msg_query.fetch(limit=1))
+            if msgs:
+                last = msgs[0]
                 last_message = {
-                    'text': m.get('lastMessageText'),
-                    'senderId': m.get('lastMessageSenderId'),
-                    'createdAt': m.get('lastMessageCreatedAt')
+                    'text': last.get('text'),
+                    'senderId': last.get('senderId'),
+                    'createdAt': last.get('createdAt')
                 }
-            else:
-                # Slow path fallback for matches that predate this optimisation;
-                # backfills the cache so the slow path only runs once per match.
-                msg_query = client.query(kind='Message')
-                msg_query.add_filter('matchId', '=', match_id)
-                msgs = sorted(msg_query.fetch(), key=lambda x: x.get('createdAt', ''))
-                if msgs:
-                    last = msgs[-1]
-                    last_message = {
-                        'text': last.get('text'),
-                        'senderId': last.get('senderId'),
-                        'createdAt': last.get('createdAt')
-                    }
-                    m['lastMessageText'] = last_message['text']
-                    m['lastMessageSenderId'] = last_message['senderId']
-                    m['lastMessageCreatedAt'] = last_message['createdAt']
-                    client.put(m)
+                # Backfill cache so this slow path never runs again for this match
+                m['lastMessageText'] = last_message['text']
+                m['lastMessageSenderId'] = last_message['senderId']
+                m['lastMessageCreatedAt'] = last_message['createdAt']
+                uncached_to_save.append(m)
 
-            matches.append({
-                'id': match_id,
-                'partnerId': partner_id,
-                'partnerName': pd.get('displayName', 'Unknown'),
-                'partnerSports': pd.get('sports', []),
-                'partnerCollegeYear': pd.get('collegeYear'),
-                'partnerProfilePicture': pd.get('profilePicture'),
-                'partnerBio': pd.get('bio'),
-                'partnerMajor': pd.get('major'),
-                'partnerAvailability': pd.get('availability'),
-                'partnerSocials': pd.get('socials'),
-                'status': m.get('status'),
-                'lastMessage': last_message,
-                'createdAt': m.get('createdAt')
-            })
+        matches.append({
+            'id': match_id,
+            'partnerId': partner_id,
+            'partnerName': pd.get('displayName', 'Unknown'),
+            'partnerSports': pd.get('sports', []),
+            'partnerCollegeYear': pd.get('collegeYear'),
+            'partnerProfilePicture': pd.get('profilePicture'),
+            'partnerBio': pd.get('bio'),
+            'partnerMajor': pd.get('major'),
+            'partnerAvailability': pd.get('availability'),
+            'partnerSocials': pd.get('socials'),
+            'status': m.get('status'),
+            'lastMessage': last_message,
+            'createdAt': m.get('createdAt')
+        })
+
+    # Batch-save any matches whose lastMessage cache was just backfilled
+    if uncached_to_save:
+        client.put_multi(uncached_to_save)
 
     # Sort by most recent activity
     matches.sort(
@@ -423,11 +455,17 @@ def get_messages(match_id):
 
     client = get_client()
 
-    # Messages
+    # Messages — push the `since` timestamp filter into Datastore so we only
+    # transfer new messages over the wire instead of filtering in Python.
+    # The (matchId, createdAt) composite index handles both filter + ordering.
     query = client.query(kind='Message')
     query.add_filter('matchId', '=', match_id)
+    if since:
+        query.add_filter('createdAt', '>', since)
+    query.order = ['createdAt']
 
-    # Reactions
+    # Reactions — fetch all for the match in one query (reactions are sparse
+    # so this is cheap; scoping to message IDs would require N extra queries).
     reaction_query = client.query(kind='MessageReaction')
     reaction_query.add_filter('matchId', '=', match_id)
     all_reactions = list(reaction_query.fetch())
@@ -445,8 +483,6 @@ def get_messages(match_id):
 
     messages = []
     for msg in query.fetch():
-        if since and msg.get('createdAt', '') <= since:
-            continue
         msg_id = msg.key.name or str(msg.key.id)
         msg_dict = {
             'id': msg_id,
@@ -462,8 +498,7 @@ def get_messages(match_id):
         if msg.get('metadata'):
             msg_dict['metadata'] = msg.get('metadata')
         messages.append(msg_dict)
-
-    messages.sort(key=lambda m: m['createdAt'])
+    # No Python sort needed — Datastore returns results ordered by createdAt
 
     # Typing indicator
     partner_is_typing = False
@@ -554,13 +589,17 @@ def add_reaction(match_id, message_id):
     """Add a reaction to a message."""
     user_id = request.user_id
 
-    match, _ = get_match_for_user(match_id, user_id)
-    if not match:
-        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
-
     client = get_client()
+
+    # Fetch match and message in one round-trip instead of two sequential reads
+    match_key = client.key('Match', match_id)
     msg_key = client.key('Message', message_id)
-    message = client.get(msg_key)
+    rm = {e.key.flat_path: e for e in client.get_multi([match_key, msg_key])}
+    match = rm.get(match_key.flat_path)
+    message = rm.get(msg_key.flat_path)
+
+    if not match or (match.get('user1Id') != user_id and match.get('user2Id') != user_id):
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
 
     if not message or message.get('matchId') != match_id:
         return error_response('MESSAGE_NOT_FOUND', 'Message not found', 404)
@@ -601,13 +640,17 @@ def remove_reaction(match_id, message_id, emoji):
     """Remove a reaction from a message."""
     user_id = request.user_id
 
-    match, _ = get_match_for_user(match_id, user_id)
-    if not match:
-        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
-
     client = get_client()
+
+    # Single round-trip for both match auth check and message validation
+    match_key = client.key('Match', match_id)
     msg_key = client.key('Message', message_id)
-    message = client.get(msg_key)
+    rm = {e.key.flat_path: e for e in client.get_multi([match_key, msg_key])}
+    match = rm.get(match_key.flat_path)
+    message = rm.get(msg_key.flat_path)
+
+    if not match or (match.get('user1Id') != user_id and match.get('user2Id') != user_id):
+        return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
 
     if not message or message.get('matchId') != match_id:
         return error_response('MESSAGE_NOT_FOUND', 'Message not found', 404)
@@ -736,8 +779,11 @@ def get_compatible_times(match_id):
     if not match:
         return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
 
-    user = get_user_by_id(user_id)
-    partner = get_user_by_id(partner_id)
+    user_key = client.key('User', user_id)
+    partner_key = client.key('User', partner_id)
+    rm = {e.key.flat_path: e for e in client.get_multi([user_key, partner_key])}
+    user = rm.get(user_key.flat_path)
+    partner = rm.get(partner_key.flat_path)
 
     if not user or not partner:
         return error_response('USER_NOT_FOUND', 'User not found', 404)
@@ -810,12 +856,14 @@ def create_session(match_id):
 
     # Supersede any existing pending or accepted sessions BEFORE creating the new one
     # so the new session is never included in this query.
-    existing_query = client.query(kind='Session')
-    existing_query.add_filter('matchId', '=', match_id)
+    # Use two targeted queries (one per status) to avoid scanning all sessions.
     superseded = []
     has_existing_active = False
-    for existing_session in existing_query.fetch():
-        if existing_session.get('status') in ('pending', 'accepted'):
+    for status in ('pending', 'accepted'):
+        sq = client.query(kind='Session')
+        sq.add_filter('matchId', '=', match_id)
+        sq.add_filter('status', '=', status)
+        for existing_session in sq.fetch():
             has_existing_active = True
             existing_session['status'] = 'superseded'
             existing_session['updatedAt'] = created_at
@@ -840,8 +888,7 @@ def create_session(match_id):
     })
 
     # Use different message text when modifying an existing session
-    proposer = get_user_by_id(user_id)
-    proposer_name = proposer.get('displayName', 'Someone') if proposer else 'Someone'
+    proposer_name = get_display_name_for_request(user_id)
     if has_existing_active:
         system_text = (
             f'{proposer_name} proposed changes to the session: '
@@ -925,12 +972,14 @@ def update_session(match_id, session_id):
     session['updatedAt'] = now
 
     if action == 'accept':
-        # Clean up superseded sessions now that a new version is confirmed
+        # Clean up superseded sessions now that a new version is confirmed.
+        # Filter by status in Datastore to avoid scanning all sessions for the match.
         cleanup_query = client.query(kind='Session')
         cleanup_query.add_filter('matchId', '=', match_id)
+        cleanup_query.add_filter('status', '=', 'superseded')
         keys_to_delete = [
             s.key for s in cleanup_query.fetch()
-            if s.get('status') == 'superseded' and s.key.name != session_id
+            if s.key.name != session_id
         ]
         if keys_to_delete:
             client.delete_multi(keys_to_delete)
@@ -938,8 +987,7 @@ def update_session(match_id, session_id):
     client.put(session)
 
     # Auto-create system message
-    responder = get_user_by_id(user_id)
-    responder_name = responder.get('displayName', 'Someone') if responder else 'Someone'
+    responder_name = get_display_name_for_request(user_id)
     if action == 'cancel':
         verb = 'cancelled'
     elif action == 'accept':
@@ -962,15 +1010,11 @@ def update_session(match_id, session_id):
         'createdAt': now,
     })
 
-    # Cache lastMessage on the Match entity
-    match_entity = client.get(client.key('Match', match_id))
-    if match_entity:
-        match_entity['lastMessageText'] = system_text
-        match_entity['lastMessageSenderId'] = user_id
-        match_entity['lastMessageCreatedAt'] = now
-        client.put_multi([msg_entity, match_entity])
-    else:
-        client.put(msg_entity)
+    # Cache lastMessage on the Match entity — reuse the entity already in scope.
+    match['lastMessageText'] = system_text
+    match['lastMessageSenderId'] = user_id
+    match['lastMessageCreatedAt'] = now
+    client.put_multi([msg_entity, match])
 
     return jsonify({
         'success': True,
@@ -1035,14 +1079,21 @@ def get_active_session(match_id):
         return error_response('MATCH_NOT_FOUND', 'Match not found', 404)
 
     client = get_client()
-    query = client.query(kind='Session')
-    query.add_filter('matchId', '=', match_id)
 
+    # Two targeted queries (one per active status) using the (matchId, status)
+    # composite index — avoids loading all sessions for the match.
+    # Supersession logic guarantees at most one pending and one accepted session
+    # per match at any time, so limit=1 per status is safe without ordering.
     active = None
-    for s in query.fetch():
-        if s.get('status') in ('pending', 'accepted'):
-            if active is None or s.get('createdAt', '') > active.get('createdAt', ''):
-                active = s
+    for status in ('pending', 'accepted'):
+        sq = client.query(kind='Session')
+        sq.add_filter('matchId', '=', match_id)
+        sq.add_filter('status', '=', status)
+        results = list(sq.fetch(limit=1))
+        if results:
+            candidate = results[0]
+            if active is None or candidate.get('createdAt', '') > active.get('createdAt', ''):
+                active = candidate
 
     return jsonify({
         'success': True,
@@ -1074,8 +1125,7 @@ def cancel_session(match_id, session_id):
     session['status'] = 'cancelled'
     session['updatedAt'] = now
 
-    canceller = get_user_by_id(user_id)
-    canceller_name = canceller.get('displayName', 'Someone') if canceller else 'Someone'
+    canceller_name = get_display_name_for_request(user_id)
     system_text = f'{canceller_name} cancelled the {session.get("sport")} session'
     msg_id = str(uuid.uuid4())
     msg_entity = Entity(client.key('Message', msg_id))
@@ -1092,14 +1142,11 @@ def cancel_session(match_id, session_id):
         'createdAt': now,
     })
 
-    match_entity = client.get(client.key('Match', match_id))
-    if match_entity:
-        match_entity['lastMessageText'] = system_text
-        match_entity['lastMessageSenderId'] = user_id
-        match_entity['lastMessageCreatedAt'] = now
-        client.put_multi([session, msg_entity, match_entity])
-    else:
-        client.put_multi([session, msg_entity])
+    # Reuse the match entity already fetched at the top — no extra DB read
+    match['lastMessageText'] = system_text
+    match['lastMessageSenderId'] = user_id
+    match['lastMessageCreatedAt'] = now
+    client.put_multi([session, msg_entity, match])
 
     return jsonify({
         'success': True,
