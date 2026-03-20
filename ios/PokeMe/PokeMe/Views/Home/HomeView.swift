@@ -11,8 +11,19 @@ struct HomeView: View {
 
     private var unreadMatchCount: Int {
         let userId = authViewModel.user?.id ?? ""
-        return matchViewModel.matches.filter {
-            $0.lastMessage != nil && $0.lastMessage?.senderId != userId
+        let isoFull = ISO8601DateFormatter()
+        isoFull.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let isoBasic = ISO8601DateFormatter()
+        isoBasic.formatOptions = [.withInternetDateTime]
+        return matchViewModel.matches.filter { match in
+            guard let last = match.lastMessage, last.senderId != userId else { return false }
+            let msgDate = isoFull.date(from: last.createdAt)
+                ?? isoBasic.date(from: last.createdAt)
+                ?? Date.distantFuture
+            guard let lastReadStr = UserDefaults.standard.string(forKey: "chatLastRead_\(match.id)"),
+                  let lastRead = isoFull.date(from: lastReadStr) ?? isoBasic.date(from: lastReadStr)
+            else { return true }
+            return msgDate > lastRead
         }.count
     }
 
