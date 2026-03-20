@@ -42,122 +42,36 @@ struct MeetupsListView: View {
                 showSportPicker = false
             }
         } else {
-            NavigationStack {
-                VStack(spacing: 0) {
-                    // Sport filter pills
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(sports, id: \.self) { sport in
-                                Button(action: {
-                                    selectedSport = sport
-                                    viewModel.sportFilter = sport == "All" ? nil : sport
-                                    Task {
-                                        await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id, showLoadingSpinner: true)
-                                    }
-                                }) {
-                                    Text(sport)
+            NavigationView {
+                ScrollView {
+                    LazyVStack(spacing: 12, pinnedViews: .sectionHeaders) {
+                        Section {
+                            if viewModel.isLoading {
+                                ProgressView("Loading meetups...")
+                                    .padding(.top, 40)
+                                    .frame(maxWidth: .infinity)
+                            } else if displayedMeetups.isEmpty {
+                                VStack(spacing: 12) {
+                                    Image(systemName: activeQuickFilters.isEmpty ? "person.3" : "line.3.horizontal.decrease.circle")
+                                        .font(.system(size: 48))
+                                        .foregroundColor(.secondary)
+                                    Text(activeQuickFilters.isEmpty ? "No meetups yet" : "No meetups match filters")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                    Text(activeQuickFilters.isEmpty ? "Create one to get started!" : "Try adjusting or clearing your filters.")
                                         .font(.subheadline)
-                                        .fontWeight(selectedSport == sport ? .semibold : .regular)
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            selectedSport == sport
-                                                ? LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
-                                                : LinearGradient(colors: [Color(uiColor: .systemGray6), Color(uiColor: .systemGray6)], startPoint: .leading, endPoint: .trailing)
-                                        )
-                                        .foregroundColor(selectedSport == sport ? .white : .primary)
-                                        .cornerRadius(20)
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-                    }
-                    .frame(height: 52)
-
-                    // Quick filter chips row
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(MeetupQuickFilter.allCases, id: \.self) { filter in
-                                let isActive = activeQuickFilters.contains(filter)
-                                Button(action: {
-                                    withAnimation(Theme.Anim.quick) {
-                                        if isActive {
-                                            activeQuickFilters.remove(filter)
-                                        } else {
-                                            activeQuickFilters.insert(filter)
+                                        .foregroundColor(.secondary)
+                                    if !activeQuickFilters.isEmpty {
+                                        Button("Clear filters") {
+                                            withAnimation(Theme.Anim.quick) { activeQuickFilters.removeAll() }
                                         }
+                                        .font(.subheadline)
+                                        .foregroundColor(.orange)
                                     }
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: quickFilterIcon(filter))
-                                            .font(.system(size: 11, weight: .semibold))
-                                        Text(filter.rawValue)
-                                            .font(.caption)
-                                            .fontWeight(.medium)
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(isActive ? Color.orange.opacity(0.15) : Color(uiColor: .systemGray6))
-                                    .foregroundColor(isActive ? .orange : .secondary)
-                                    .cornerRadius(Theme.Radius.chip)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: Theme.Radius.chip)
-                                            .stroke(isActive ? Color.orange.opacity(0.5) : Color.clear, lineWidth: 1)
-                                    )
                                 }
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.bottom, 8)
-                    }
-
-                    // Active filter count indicator
-                    if !activeQuickFilters.isEmpty {
-                        HStack {
-                            Text("\(displayedMeetups.count) of \(viewModel.meetups.count) meetups")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Button("Clear filters") {
-                                withAnimation(Theme.Anim.quick) { activeQuickFilters.removeAll() }
-                            }
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 6)
-                    }
-
-                    // Meetups list
-                    if viewModel.isLoading {
-                        Spacer()
-                        ProgressView("Loading meetups...")
-                        Spacer()
-                    } else if displayedMeetups.isEmpty {
-                        Spacer()
-                        VStack(spacing: 12) {
-                            Image(systemName: activeQuickFilters.isEmpty ? "person.3" : "line.3.horizontal.decrease.circle")
-                                .font(.system(size: 48))
-                                .foregroundColor(.secondary)
-                            Text(activeQuickFilters.isEmpty ? "No meetups yet" : "No meetups match filters")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            Text(activeQuickFilters.isEmpty ? "Create one to get started!" : "Try adjusting or clearing your filters.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            if !activeQuickFilters.isEmpty {
-                                Button("Clear filters") {
-                                    withAnimation(Theme.Anim.quick) { activeQuickFilters.removeAll() }
-                                }
-                                .font(.subheadline)
-                                .foregroundColor(.orange)
-                            }
-                        }
-                        Spacer()
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
+                                .padding(.top, 40)
+                                .frame(maxWidth: .infinity)
+                            } else {
                                 ForEach(displayedMeetups) { meetup in
                                     MeetupCardView(
                                         meetup: meetup,
@@ -175,9 +89,15 @@ struct MeetupsListView: View {
                                     .onTapGesture { selectedMeetup = meetup }
                                 }
                             }
-                            .padding()
+                        } header: {
+                            filterBars
                         }
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom)
+                }
+                .refreshable {
+                    await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
                 }
                 .navigationTitle("Meetups")
                 .navigationBarTitleDisplayMode(.large)
@@ -215,9 +135,6 @@ struct MeetupsListView: View {
                 .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshMeetups"))) { _ in
                     Task { await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id) }
                 }
-                .refreshable {
-                    await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id)
-                }
                 .sheet(isPresented: $showCreateSheet) {
                     CreateMeetupView(viewModel: viewModel)
                         .environmentObject(authViewModel)
@@ -230,6 +147,100 @@ struct MeetupsListView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Filter Bars (pinned section header — never scrolls away)
+
+    private var filterBars: some View {
+        VStack(spacing: 0) {
+            // Sport filter pills
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(sports, id: \.self) { sport in
+                        Button(action: {
+                            selectedSport = sport
+                            viewModel.sportFilter = sport == "All" ? nil : sport
+                            Task {
+                                await viewModel.fetchMeetups(token: authViewModel.getToken(), currentUserId: authViewModel.user?.id, showLoadingSpinner: true)
+                            }
+                        }) {
+                            Text(sport)
+                                .font(.subheadline)
+                                .fontWeight(selectedSport == sport ? .semibold : .regular)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(
+                                    selectedSport == sport
+                                        ? LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                                        : LinearGradient(colors: [Color(uiColor: .systemGray6), Color(uiColor: .systemGray6)], startPoint: .leading, endPoint: .trailing)
+                                )
+                                .foregroundColor(selectedSport == sport ? .white : .primary)
+                                .cornerRadius(20)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+            .frame(height: 52)
+
+            // Quick filter chips row
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(MeetupQuickFilter.allCases, id: \.self) { filter in
+                        let isActive = activeQuickFilters.contains(filter)
+                        Button(action: {
+                            withAnimation(Theme.Anim.quick) {
+                                if isActive {
+                                    activeQuickFilters.remove(filter)
+                                } else {
+                                    activeQuickFilters.insert(filter)
+                                }
+                            }
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: quickFilterIcon(filter))
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text(filter.rawValue)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(isActive ? Color.orange.opacity(0.15) : Color(uiColor: .systemGray6))
+                            .foregroundColor(isActive ? .orange : .secondary)
+                            .cornerRadius(Theme.Radius.chip)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.Radius.chip)
+                                    .stroke(isActive ? Color.orange.opacity(0.5) : Color.clear, lineWidth: 1)
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+
+            // Active filter count indicator
+            if !activeQuickFilters.isEmpty {
+                HStack {
+                    Text("\(displayedMeetups.count) of \(viewModel.meetups.count) meetups")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Clear filters") {
+                        withAnimation(Theme.Anim.quick) { activeQuickFilters.removeAll() }
+                    }
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
+            }
+
+            Divider()
+        }
+        .background(Color(uiColor: .systemBackground))
     }
 
     // MARK: - Helpers

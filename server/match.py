@@ -8,7 +8,7 @@ from config import Config
 from models import user_to_dict, expand_availability, session_to_dict
 from middleware import require_auth
 from auth import get_user_by_id, get_display_name_for_request
-from recommendation import rank_discover_candidates
+from recommendation import rank_discover_candidates, invalidate_viewer_cache
 
 match_bp = Blueprint('match', __name__)
 
@@ -335,6 +335,9 @@ def reset_user_data():
         for m in q.fetch():
             client.delete(m.key)
             deleted_matches += 1
+
+    # Clear the discover cache so previously-poked users reappear immediately
+    invalidate_viewer_cache(user_id)
 
     return jsonify({
         'success': True,

@@ -163,6 +163,11 @@ def _call_claude(viewer, candidates):
         return None
 
 
+def invalidate_viewer_cache(viewer_id: str):
+    """Remove a viewer's cached discover results (e.g. after poke/match reset)."""
+    _discover_cache.pop(viewer_id, None)
+
+
 def rank_discover_candidates(viewer, candidates):
     """Rank candidates using Claude AI, with heuristic fallback."""
     if not candidates:
