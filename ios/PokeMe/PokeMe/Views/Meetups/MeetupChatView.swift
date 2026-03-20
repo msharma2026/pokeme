@@ -49,7 +49,7 @@ struct MeetupChatView: View {
                     TextField("Message...", text: $messageText)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(Color(.systemGray6))
+                        .background(Color(uiColor: .systemGray5))
                         .cornerRadius(20)
                         .focused($isInputFocused)
 
@@ -152,7 +152,7 @@ struct MeetupMessageBubble: View {
                     .background(
                         isFromCurrentUser
                             ? LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
-                            : LinearGradient(colors: [Color(.systemGray6), Color(.systemGray6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            : LinearGradient(colors: [Color(uiColor: .systemGray5), Color(uiColor: .systemGray5)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
                     .foregroundColor(isFromCurrentUser ? .white : .primary)
                     .cornerRadius(18)

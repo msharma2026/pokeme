@@ -98,7 +98,7 @@ struct ChatView: View {
                     TextField("Message...", text: $messageText)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(Color(.systemGray6))
+                        .background(Color(uiColor: .systemGray5))
                         .cornerRadius(20)
                         .focused($isInputFocused)
                         .onChange(of: messageText) { newValue in
@@ -343,7 +343,7 @@ struct ChatView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(.systemGray6))
+            .background(Color(uiColor: .systemGray5))
         }
         .buttonStyle(.plain)
     }
@@ -370,7 +370,7 @@ struct TypingIndicatorView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color(.systemGray6))
+            .background(Color(uiColor: .systemGray5))
             .cornerRadius(20)
 
             Spacer()
@@ -509,7 +509,7 @@ struct MessageBubble: View {
                         .background(
                             message.isFromCurrentUser
                                 ? LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                : LinearGradient(colors: [Color(.systemGray6), Color(.systemGray6)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                : LinearGradient(colors: [Color(uiColor: .systemGray5), Color(uiColor: .systemGray5)], startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
                         .foregroundColor(message.isFromCurrentUser ? .white : .primary)
                         .cornerRadius(18)
