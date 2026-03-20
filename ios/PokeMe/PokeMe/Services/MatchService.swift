@@ -102,4 +102,10 @@ final class RelationshipStatusCache {
         ids.forEach { saved.insert($0) }
         UserDefaults.standard.set(Array(saved), forKey: pokedKey)
     }
+
+    func clear() {
+        _pokedIds = []
+        _matched = [:]
+        UserDefaults.standard.removeObject(forKey: pokedKey)
+    }
 }

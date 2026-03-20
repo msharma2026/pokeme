@@ -172,6 +172,8 @@ struct SettingsView: View {
         do {
             let response = try await MatchService.shared.resetTestData(token: token)
             resetResult = "Deleted \(response.deletedPokes) pokes, \(response.deletedMatches) matches"
+            // Refresh Discover so poke statuses clear and reset users reappear
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshDiscover"), object: nil)
         } catch {
             resetResult = "Error: \(error.localizedDescription)"
         }

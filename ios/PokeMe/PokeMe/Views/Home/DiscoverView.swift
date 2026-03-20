@@ -68,6 +68,12 @@ struct DiscoverView: View {
             .onDisappear {
                 viewModel.stopBackgroundPolling()
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshDiscover"))) { _ in
+                Task {
+                    viewModel.clearPokedState()
+                    await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user, showLoadingSpinner: true)
+                }
+            }
             .onChange(of: authViewModel.user?.id) { _ in
                 Task {
                     await viewModel.fetchProfiles(token: authViewModel.getToken(), currentUser: authViewModel.user)

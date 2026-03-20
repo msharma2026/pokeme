@@ -35,6 +35,13 @@ class DiscoverViewModel: ObservableObject {
         UserDefaults.standard.set(Array(pokedIds), forKey: pokedIdsKey)
     }
 
+    func clearPokedState() {
+        pokedIds = []
+        UserDefaults.standard.removeObject(forKey: pokedIdsKey)
+        UserDefaults.standard.removeObject(forKey: cacheKey)
+        RelationshipStatusCache.shared.clear()
+    }
+
     private func saveToCache() {
         guard let data = try? JSONEncoder().encode(profiles) else { return }
         UserDefaults.standard.set(data, forKey: cacheKey)
@@ -104,7 +111,7 @@ class DiscoverViewModel: ObservableObject {
 
             let response = try await MatchService.shared.discover(token: token, sport: selectedSport)
             if let serverPokedIds = response.pokedIds {
-                pokedIds = pokedIds.union(Set(serverPokedIds))
+                pokedIds = Set(serverPokedIds)
                 savePokedIds()
                 RelationshipStatusCache.shared.populatePokedIds(serverPokedIds)
             }

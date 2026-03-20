@@ -57,10 +57,19 @@ def discover():
 
     client = get_client()
 
-    # Get user IDs the current user has already poked
+    # Get user IDs the current user has already poked.
+    # Use a keys-only query then confirm via get_multi (strongly consistent)
+    # to avoid stale index entries after a poke reset (eventually consistent
+    # queries in Datastore mode can lag behind recent deletes).
     poke_query = client.query(kind='Poke')
+    poke_query.keys_only()
     poke_query.add_filter('fromUserId', '=', user_id)
-    poked_ids = set(p.get('toUserId') for p in poke_query.fetch())
+    poke_keys = [item.key for item in poke_query.fetch()]
+    if poke_keys:
+        confirmed_pokes = [e for e in client.get_multi(poke_keys) if e]
+        poked_ids = set(e.get('toUserId') for e in confirmed_pokes)
+    else:
+        poked_ids = set()
 
     # Get user IDs the current user is already matched with
     matched_ids = set()
