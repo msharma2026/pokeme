@@ -12,3 +12,8 @@ Most users loved it, but wished there was more people
 “This app is really useful, but I think it would only be good if there was an active user base” –Toby, an active 3rd year
 
 "This is exactly the kind of app I was looking for because I don't really have friends to play volleyball with and I am too shy to just go up to a court and join random people" -Mindy, volleyball player
+
+Some users really liked the app's scheduling feature
+"I think this app's meetup feature is extremely convenient, and makes scheduling things with my friends really easy" - Andrew, a normal 3rd year
+
+"I really like how easy it is to change the schedule and communicate that to everyone using the make scheduling change feature" - Richmond, a 4th year
