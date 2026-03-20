@@ -42,7 +42,7 @@ struct MeetupsListView: View {
                 showSportPicker = false
             }
         } else {
-            NavigationView {
+            NavigationStack {
                 VStack(spacing: 0) {
                     // Sport filter pills
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -73,6 +73,7 @@ struct MeetupsListView: View {
                         .padding(.horizontal)
                         .padding(.vertical, 8)
                     }
+                    .frame(height: 52)
 
                     // Quick filter chips row
                     ScrollView(.horizontal, showsIndicators: false) {
