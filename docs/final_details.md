@@ -17,3 +17,6 @@ Some users really liked the app's scheduling feature
 "I think this app's meetup feature is extremely convenient, and makes scheduling things with my friends really easy" - Andrew, a normal 3rd year
 
 "I really like how easy it is to change the schedule and communicate that to everyone using the make scheduling change feature" - Richmond, a 4th year
+
+Others wished there was more clarity on how users were recommended to each other in the Discover tab
+"How is the system recommending people to us? I wished it had a better explanation of why we are compatible such as comparing skills and playstyles instead of just purely our sports interests and availability" - Eric, 5th club badminton player
